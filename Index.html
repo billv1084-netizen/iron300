@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRON 300 — Strength & Hypertrophy Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --border: #2a2a2a;
+    --accent: #e8ff3d;
+    --accent2: #ff5722;
+    --text: #f0f0f0;
+    --muted: #666;
+    --green: #4caf7d;
+    --red: #e05252;
+    --blue: #4a9eff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--text); }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .hstat {
+    text-align: right;
+  }
+
+  .hstat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .hstat-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); }
+
+  /* NAV */
+  .nav {
+    display: flex;
+    gap: 4px;
+    padding: 16px 24px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .nav-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .nav-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .nav-btn:hover:not(.active) { color: var(--text); }
+
+  /* PAGES */
+  .page { display: none; padding: 24px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  /* WORKOUT DAY CARD */
+  .day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .day-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 3px;
+  }
+
+  .day-badge {
+    background: var(--accent);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* EXERCISE ROW */
+  .exercise-block {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .exercise-header {
+    background: var(--surface2);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .ex-name {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .ex-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .ex-target {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    text-align: right;
+  }
+
+  .ex-target-label { font-size: 10px; color: var(--muted); text-align: right; }
+
+  .sets-table {
+    padding: 12px 16px;
+  }
+
+  .set-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 80px;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .set-row:last-child { border-bottom: none; }
+
+  .set-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .set-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 6px 10px;
+    width: 100%;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .set-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .set-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 2px;
+  }
+
+  .set-status-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--muted);
+    transition: all 0.2s;
+    width: 100%;
+  }
+
+  .set-status-btn.done {
+    background: var(--green);
+    border-color: var(--green);
+    color: #000;
+  }
+
+  .set-status-btn.fail {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #d4eb00; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-danger {
+    background: var(--red);
+    color: #fff;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar-wrap {
+    background: var(--surface2);
+    border-radius: 100px;
+    height: 8px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.5s ease;
+  }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-box-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-box-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* FORM */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    padding: 10px 14px;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+
+  /* HISTORY TABLE */
+  .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .history-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .history-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+  }
+  .history-table tr:last-child td { border-bottom: none; }
+  .history-table tr:hover td { background: var(--surface2); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .tag-success { background: rgba(76,175,125,0.2); color: var(--green); }
+  .tag-fail { background: rgba(224,82,82,0.2); color: var(--red); }
+  .tag-partial { background: rgba(74,158,255,0.2); color: var(--blue); }
+
+  /* 1RM DISPLAY */
+  .big-lift {
+    text-align: center;
+    padding: 24px;
+  }
+
+  .big-lift-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 80px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .big-lift-unit {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--muted);
+    letter-spacing: 3px;
+  }
+
+  .big-lift-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* WEEK SELECTOR */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .week-nav-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .week-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .week-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    flex: 1;
+    text-align: center;
+  }
+
+  /* DAY TABS */
+  .day-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .day-tab {
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .day-tab.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+
+  .day-tab.completed {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .day-tab.has-fail {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* NOTES */
+  .note-box {
+    background: rgba(232,255,61,0.05);
+    border: 1px solid rgba(232,255,61,0.2);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  .note-box strong { color: var(--accent); }
+
+  /* ALERT */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .alert-warn {
+    background: rgba(255,87,34,0.1);
+    border: 1px solid rgba(255,87,34,0.3);
+    color: #ff8a65;
+  }
+
+  .alert-success {
+    background: rgba(76,175,125,0.1);
+    border: 1px solid rgba(76,175,125,0.3);
+    color: var(--green);
+  }
+
+  /* DELOAD */
+  .deload-badge {
+    background: rgba(74,158,255,0.15);
+    border: 1px solid rgba(74,158,255,0.3);
+    color: var(--blue);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .header { padding: 0 14px; }
+    .page { padding: 14px; }
+    .nav { padding: 12px 14px 0; }
+    .hstat { display: none; }
+    .big-lift-num { font-size: 60px; }
+  }
+
+  .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state-text { font-size: 15px; }
+
+  /* PROGRAM CYCLE DOTS */
+  .cycle-dots {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .cycle-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .cycle-dot.done { background: var(--green); }
+  .cycle-dot.current { background: var(--accent); }
+  .cycle-dot.fail { background: var(--red); }
+
+  .tooltip {
+    position: relative;
+    cursor: help;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">IRON <span>300</span></div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-label">Estimated 1RM</div>
+      <div class="hstat-val" id="header-1rm">—</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-label">Goal</div>
+      <div class="hstat-val">300 lbs</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-label">Progress</div>
+      <div class="hstat-val" id="header-pct">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showPage('today')">Today</button>
+  <button class="nav-btn" onclick="showPage('program')">Program</button>
+  <button class="nav-btn" onclick="showPage('progress')">Progress</button>
+  <button class="nav-btn" onclick="showPage('history')">History</button>
+  <button class="nav-btn" onclick="showPage('settings')">Settings</button>
+</div>
+
+<!-- TODAY PAGE -->
+<div class="page active" id="page-today">
+  <div id="today-content"></div>
+</div>
+
+<!-- PROGRAM PAGE -->
+<div class="page" id="page-program">
+  <div id="program-content"></div>
+</div>
+
+<!-- PROGRESS PAGE -->
+<div class="page" id="page-progress">
+  <div id="progress-content"></div>
+</div>
+
+<!-- HISTORY PAGE -->
+<div class="page" id="page-history">
+  <div id="history-content"></div>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <div class="card-title">Your Profile</div>
+    <div class="form-group">
+      <label class="form-label">Current Bench Estimated 1RM (lbs)</label>
+      <input class="form-input" type="number" id="set-1rm" placeholder="e.g. 265" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Goal: Bench Press 1RM (lbs)</label>
+      <input class="form-input" type="number" id="set-goal" value="300" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Available Equipment</label>
+      <select class="form-input" id="set-equipment">
+        <option value="barbell">Barbell + Rack</option>
+        <option value="dumbbells">Dumbbells Only</option>
+        <option value="both">Both Barbell & Dumbbells</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Days Per Week</label>
+      <select class="form-input" id="set-days">
+        <option value="3">3 Days (Mon/Wed/Fri)</option>
+        <option value="4" selected>4 Days (Mon/Tue/Thu/Fri)</option>
+        <option value="5">5 Days</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">OHP Starting Weight (lbs)</label>
+      <input class="form-input" type="number" id="set-ohp" placeholder="e.g. 90" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bar Weight (lbs)</label>
+      <input class="form-input" type="number" id="set-bar" value="45" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Smallest Plate Available (lbs)</label>
+      <input class="form-input" type="number" id="set-plate" value="2.5" />
+    </div>
+    <button class="btn btn-primary" onclick="saveSettings()" style="margin-right:10px">Save & Generate Program</button>
+    <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">About This Program</div>
+    <p style="font-size:14px; color: var(--muted); line-height:1.8">
+      <strong style="color:var(--text)">Day 1 — Heavy Bench (Weekend):</strong> A top single at RPE 7.5–8, then 4×5 back-offs at ~83%. This is your primary strength driver toward 300. The single weight climbs +2.5 lbs every week.<br><br>
+      <strong style="color:var(--text)">Day 2 — OHP (Monday):</strong> Overhead Press 4×5, climbing toward 4×8 before adding weight. OHP builds shoulder and tricep strength that carries directly to your bench.<br><br>
+      <strong style="color:var(--text)">Day 3 — Volume Bench (Wednesday):</strong> 4×6 at ~74% of training max. Builds work capacity and muscle. Weight increases +2.5 lbs each week alongside the heavy day.<br><br>
+      <strong style="color:var(--text)">Day 4 — Speed Bench (Thursday):</strong> 8×3 at 65% with 60–90s rest. Every rep is explosive. Speed work builds bar velocity and motor pattern — critical for the 300 lb single.<br><br>
+      <strong style="color:var(--text)">Hypertrophy:</strong> 4 sets of 1 exercise per muscle group (back, shoulders, biceps, triceps) each day = 16 sets/week per muscle. Weight progresses automatically when you hit the top of the rep range.<br><br>
+      <strong style="color:var(--text)">Deload (every 4th week):</strong> Weights drop to 60–70%. Recovery is when you actually grow stronger.<br><br>
+      <strong style="color:var(--text)">Failure Protocol:</strong> Miss the heavy single twice in a row → training max drops 10% and rebuilds. Assistance fails → hold weight, lower rep target before progressing again.
+    </p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA LAYER
+// ═══════════════════════════════════════════════════════════
+
+function loadData() {
+  try {
+    return JSON.parse(localStorage.getItem('iron300_data')) || defaultData();
+  } catch(e) { return defaultData(); }
+}
+
+function saveData(d) {
+  localStorage.setItem('iron300_data', JSON.stringify(d));
+}
+
+function defaultData() {
+  return {
+    settings: {
+      goal: 300,
+      barWeight: 45,
+      smallestPlate: 2.5,
+      daysPerWeek: 4,
+      equipment: 'barbell'
+    },
+    trainingMax: null, // calculated from 1RM * 0.9
+    estimated1RM: null,
+    currentWeek: 1,
+    currentDay: 1,
+    program: null, // generated program
+    workoutLogs: [], // [{week, day, date, exercises:[{name, sets:[{weight,reps,done,fail}]}]}]
+    failStreak: {}, // {exerciseName: count}
+    assistanceWeights: {} // {exerciseName: {weight, reps}}
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// MATH HELPERS
+// ═══════════════════════════════════════════════════════════
+
+// Epley formula: 1RM = w * (1 + r/30)
+function calc1RM(weight, reps) {
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30));
+}
+
+function roundToPlate(weight, barWeight, smallestPlate) {
+  // Round to nearest smallestPlate * 2 (both sides)
+  const increment = smallestPlate * 2;
+  const plates = weight - barWeight;
+  if (plates <= 0) return barWeight;
+  const rounded = Math.round(plates / increment) * increment;
+  return barWeight + rounded;
+}
+
+function pct(trainingMax, p, barWeight, smallestPlate) {
+  const raw = trainingMax * p / 100;
+  return roundToPlate(raw, barWeight, smallestPlate);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROGRAM GENERATION
+// ═══════════════════════════════════════════════════════════
+
+const ASSISTANCE_LIBRARY = {
+  // Back
+  'Seated Chest-Supported Row': { group: 'back',     sets: 4, repRange: [6,10],  startWeight: 90,  failProtocol: 'strength'    },
+  'Lat Pulldown':               { group: 'back',     sets: 4, repRange: [8,12],  startWeight: 120, failProtocol: 'hypertrophy' },
+  'Seated Cable Row':           { group: 'back',     sets: 4, repRange: [8,12],  startWeight: 110, failProtocol: 'hypertrophy' },
+  'Dumbbell Row':               { group: 'back',     sets: 4, repRange: [10,12], startWeight: 50,  failProtocol: 'hypertrophy' },
+  // Shoulders
+  'Lateral Raise':              { group: 'shoulders',sets: 4, repRange: [12,20], startWeight: 20,  failProtocol: 'pump'        },
+  'Rear Delt Fly':              { group: 'shoulders',sets: 4, repRange: [15,25], startWeight: 20,  failProtocol: 'pump'        },
+  'Face Pull':                  { group: 'shoulders',sets: 4, repRange: [15,25], startWeight: 50,  failProtocol: 'pump'        },
+  // Biceps
+  'EZ Bar Curl':                { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 65,  failProtocol: 'hypertrophy' },
+  'Dumbbell Curl':              { group: 'biceps',   sets: 4, repRange: [8,15],  startWeight: 25,  failProtocol: 'hypertrophy' },
+  'Hammer Curl':                { group: 'biceps',   sets: 4, repRange: [10,15], startWeight: 30,  failProtocol: 'hypertrophy' },
+  'Incline DB Curl':            { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 20,  failProtocol: 'hypertrophy' },
+  'Preacher Curl':              { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 50,  failProtocol: 'hypertrophy' },
+  // Triceps
+  'Skull Crusher':              { group: 'triceps',  sets: 4, repRange: [8,12],  startWeight: 65,  failProtocol: 'hypertrophy' },
+  'Tricep Pushdown':            { group: 'triceps',  sets: 4, repRange: [12,20], startWeight: 60,  failProtocol: 'pump'        },
+  'Overhead Tricep Ext':        { group: 'triceps',  sets: 4, repRange: [10,15], startWeight: 60,  failProtocol: 'hypertrophy' },
+  'JM Press':                   { group: 'triceps',  sets: 4, repRange: [6,10],  startWeight: 95,  failProtocol: 'strength'    },
+  // Chest (accessory — bench is primary chest work)
+  'Hammer Strength Incline':    { group: 'chest',    sets: 3, repRange: [10,12], startWeight: 90,  failProtocol: 'hypertrophy' },
+  'Cable Fly':                  { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 40,  failProtocol: 'pump'        },
+};
+
+// ── FAILURE PROTOCOLS ─────────────────────────────────────
+// Three types based on exercise role. Each gives exact next-session instructions.
+const FAIL_PROTOCOLS = {
+  strength: {
+    getInstruction: (weight, repRange) => {
+      const drop = Math.round(weight * 0.90 / 2.5) * 2.5;
+      return `Drop to <strong>${drop} lbs</strong> next session. Hit every set clean at ${drop} lbs before climbing again. Strength movements reward patience — grinding ugly reps builds bad habits.`;
+    },
+    newWeight: (weight) => Math.round(weight * 0.90 / 2.5) * 2.5,
+    newReps: (cur, range) => range[0],
+  },
+  hypertrophy: {
+    getInstruction: (weight, repRange) => {
+      const dropReps = Math.max(repRange[0], repRange[0]);
+      return `Keep <strong>${weight} lbs</strong>. Drop target to <strong>${repRange[0]} reps/set</strong> and rebuild. Add 1 rep per week per set until you're back at ${repRange[1]}, then bump the weight.`;
+    },
+    newWeight: (weight) => weight,
+    newReps: (cur, range) => range[0],
+  },
+  pump: {
+    getInstruction: (weight, repRange) => {
+      return `Keep <strong>${weight} lbs</strong>. Slow the eccentric to 3 seconds, full squeeze at top. For pump work, perfect reps beat grinding. Chase quality — the weight will come.`;
+    },
+    newWeight: (weight) => weight,
+    newReps: (cur, range) => Math.max(range[0], cur - 1),
+  },
+};
+
+// ─────────────────────────────────────────────────────────
+// Weekly set totals (4-day): Back 16, Shoulders 16, Biceps 16, Triceps 16, Chest 6+bench ✓
+// ─────────────────────────────────────────────────────────
+
+function getDayStructure(daysPerWeek) {
+  if (daysPerWeek === 3) {
+    return [
+      {
+        label: 'Day A — Heavy Bench + Back + Tris',
+        benchFocus: 'heavy',
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
+      },
+      {
+        label: 'Day B — OHP + Lats + Bis',
+        benchFocus: 'ohp',
+        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
+      },
+      {
+        label: 'Day C — Volume Bench + Back + Arms',
+        benchFocus: 'volume',
+        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','JM Press','Cable Fly']
+      },
+    ];
+  } else if (daysPerWeek === 4) {
+    return [
+      {
+        label: 'Day 1 — Heavy Bench + Back + Tris',
+        benchFocus: 'heavy',
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Incline DB Press']
+      },
+      {
+        label: 'Day 2 — OHP + Lats + Bis',
+        benchFocus: 'ohp',
+        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
+      },
+      {
+        label: 'Day 3 — Volume Bench + Back + Arms',
+        benchFocus: 'volume',
+        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+      },
+      {
+        label: 'Day 4 — Speed Bench + Back + Arms',
+        benchFocus: 'speed',
+        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','JM Press']
+      },
+    ];
+    // Back 16, Shoulders 16, Biceps 16, Triceps 16, Chest 6 ✓
+  } else {
+    return [
+      {
+        label: 'Day 1 — Heavy Bench + Back + Tris',
+        benchFocus: 'heavy',
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
+      },
+      {
+        label: 'Day 2 — OHP + Lats + Bis',
+        benchFocus: 'ohp',
+        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
+      },
+      {
+        label: 'Day 3 — Volume Bench + Back + Arms',
+        benchFocus: 'volume',
+        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+      },
+      {
+        label: 'Day 4 — Speed Bench + Back + Arms',
+        benchFocus: 'speed',
+        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','JM Press']
+      },
+      {
+        label: 'Day 5 — OHP + Full Upper Accessory',
+        benchFocus: 'ohp',
+        assistance: ['Lat Pulldown','Rear Delt Fly','EZ Bar Curl','Skull Crusher']
+      },
+    ];
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// POWERBUILD BENCH SYSTEM (from your spreadsheet)
+//
+// Day 1 (Weekend/Heavy): Top Single RPE 7.5–8 + 4×5 back-offs
+// Day 2 (Monday):        OHP 4×5 (bench rest — shoulder strength)
+// Day 3 (Wednesday):     Volume Bench 4×6
+// Day 4 (Thursday):      Speed Bench 8×3 @ 65%
+//
+// Weekly increment: +2.5 lbs on single & all bench variants
+// Deload every 4th week: drop to 60% for all bench work
+// ─────────────────────────────────────────────────────────
+
+function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate) {
+  const isDeload = (week % 4 === 0);
+
+  // ── DELOAD ──
+  if (isDeload) {
+    if (focus === 'heavy') {
+      return {
+        label: 'Deload — Light Singles',
+        note: 'Keep it easy. RPE 5–6 max. This is recovery, not testing.',
+        warmups: buildBenchWarmups(pct(trainingMax, 60, barWeight, smallestPlate), barWeight, smallestPlate, 'heavy'),
+        sets: [
+          { targetWeight: pct(trainingMax, 50, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Single' },
+          { targetWeight: pct(trainingMax, 60, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Back-off' },
+          { targetWeight: pct(trainingMax, 60, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Back-off' },
+          { targetWeight: pct(trainingMax, 60, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Back-off' },
+        ]
+      };
+    }
+    if (focus === 'volume') {
+      const w = pct(trainingMax, 60, barWeight, smallestPlate);
+      return {
+        label: 'Deload — Easy Volume',
+        note: 'Move the bar fast, stop well before failure.',
+        warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'volume'),
+        sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 4, isAMRAP: false, label: 'Set' }))
+      };
+    }
+    if (focus === 'speed') {
+      const w = pct(trainingMax, 50, barWeight, smallestPlate);
+      return {
+        label: 'Deload — Speed Work',
+        note: 'Half the normal sets. Focus on explosiveness.',
+        warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'speed'),
+        sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 3, isAMRAP: false, label: 'Speed' }))
+      };
+    }
+  }
+
+  // ── HEAVY DAY (Weekend) — Top Single + 4×5 back-offs ──
+  if (focus === 'heavy') {
+    // Single climbs: TM * 0.90 week1, +2.5 each week
+    const singleWeight = roundToPlate(trainingMax * 0.90 + (week - 1) * 2.5, barWeight, smallestPlate);
+    const backOffWeight = roundToPlate(singleWeight * 0.83, barWeight, smallestPlate);
+    return {
+      label: 'Heavy Single + 4×5 Back-offs',
+      note: 'Single target: RPE 7.5–8. If bar speed is slow or grind-y, stop. Back-offs: controlled, no grinders. Rest 3–5 min before single, 3–4 min between back-offs.',
+      warmups: buildBenchWarmups(singleWeight, barWeight, smallestPlate, 'heavy'),
+      sets: [
+        { targetWeight: singleWeight, targetReps: 1, isAMRAP: false, isSingle: true, label: 'Top Single (RPE 7.5–8)' },
+        { targetWeight: backOffWeight, targetReps: 5, isAMRAP: false, label: 'Back-off' },
+        { targetWeight: backOffWeight, targetReps: 5, isAMRAP: false, label: 'Back-off' },
+        { targetWeight: backOffWeight, targetReps: 5, isAMRAP: false, label: 'Back-off' },
+        { targetWeight: backOffWeight, targetReps: 5, isAMRAP: false, label: 'Back-off' },
+      ]
+    };
+  }
+
+  // ── VOLUME DAY (Wednesday) — 4×6 ──
+  if (focus === 'volume') {
+    const w = roundToPlate(trainingMax * 0.745 + (week - 1) * 2.5, barWeight, smallestPlate);
+    return {
+      label: '4×6 Volume Bench',
+      note: 'If the last set is near-failure, hold this weight next week. Rest 2:00–2:45 between sets.',
+      warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'volume'),
+      sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 6, isAMRAP: false, label: 'Set' }))
+    };
+  }
+
+  // ── SPEED DAY (Thursday) — 8×3 @ 65% ──
+  if (focus === 'speed') {
+    const w = roundToPlate(trainingMax * 0.65 + (week - 1) * 2.5, barWeight, smallestPlate);
+    return {
+      label: '8×3 Speed Bench',
+      note: 'Every rep explosive — treat it like you\'re trying to throw the bar through the ceiling. Rest 60–90s between sets. If bar speed dies, the weight is too heavy.',
+      warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'speed'),
+      sets: [1,2,3,4,5,6,7,8].map(() => ({ targetWeight: w, targetReps: 3, isAMRAP: false, label: 'Speed' }))
+    };
+  }
+
+  return { label: '', warmups: [], sets: [] };
+}
+
+// ── OHP for Day 2 ──
+function generateOHPSets(week, ohpWeight, barWeight, smallestPlate) {
+  const isDeload = (week % 4 === 0);
+  if (isDeload) {
+    const w = roundToPlate(ohpWeight * 0.7, barWeight, smallestPlate);
+    return {
+      label: 'Deload OHP',
+      note: 'Light and easy. 3×5 at 70%.',
+      warmups: [
+        { weight: barWeight, reps: 8 },
+        { weight: roundToPlate(w * 0.6, barWeight, smallestPlate), reps: 5 },
+      ],
+      sets: [1,2,3].map(() => ({ targetWeight: w, targetReps: 5, label: 'Set' }))
+    };
+  }
+  return {
+    label: '4×5 Overhead Press',
+    note: 'Add reps each week until you hit 4×8, then add 5 lbs and reset to 4×5. Rest 2:00–2:30.',
+    warmups: [
+      { weight: barWeight, reps: 8 },
+      { weight: roundToPlate(ohpWeight * 0.6, barWeight, smallestPlate), reps: 5 },
+      { weight: roundToPlate(ohpWeight * 0.75, barWeight, smallestPlate), reps: 3 },
+      { weight: roundToPlate(ohpWeight * 0.875, barWeight, smallestPlate), reps: 1 },
+    ],
+    sets: [1,2,3,4].map(() => ({ targetWeight: ohpWeight, targetReps: 5, label: 'Set' }))
+  };
+}
+
+// Build specific warmup progressions matching your spreadsheet
+function buildBenchWarmups(topWeight, barWeight, smallestPlate, type) {
+  if (type === 'heavy') {
+    // Full ladder to the single
+    return [
+      { weight: barWeight, reps: 10 },
+      { weight: barWeight, reps: 8 },
+      { weight: roundToPlate(95, barWeight, smallestPlate),  reps: 5 },
+      { weight: roundToPlate(135, barWeight, smallestPlate), reps: 3 },
+      { weight: roundToPlate(165, barWeight, smallestPlate), reps: 2 },
+      { weight: roundToPlate(185, barWeight, smallestPlate), reps: 1 },
+      { weight: roundToPlate(205, barWeight, smallestPlate), reps: 1 },
+      { weight: roundToPlate(Math.min(topWeight * 0.92, 225), barWeight, smallestPlate), reps: 1, note: '3 min rest, then single' },
+    ].filter(w => w.weight < topWeight);
+  }
+  if (type === 'volume') {
+    return [
+      { weight: barWeight, reps: 10 },
+      { weight: barWeight, reps: 8 },
+      { weight: roundToPlate(95, barWeight, smallestPlate),  reps: 5 },
+      { weight: roundToPlate(135, barWeight, smallestPlate), reps: 3 },
+      { weight: roundToPlate(topWeight * 0.75, barWeight, smallestPlate), reps: 1, note: 'then work sets' },
+    ].filter(w => w.weight < topWeight);
+  }
+  if (type === 'speed') {
+    return [
+      { weight: barWeight, reps: 10 },
+      { weight: barWeight, reps: 8 },
+      { weight: roundToPlate(95, barWeight, smallestPlate),  reps: 5 },
+      { weight: roundToPlate(135, barWeight, smallestPlate), reps: 3 },
+      { weight: roundToPlate(topWeight * 0.85, barWeight, smallestPlate), reps: 1, note: 'then speed sets' },
+    ].filter(w => w.weight < topWeight);
+  }
+  return [];
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS & INIT
+// ═══════════════════════════════════════════════════════════
+
+function saveSettings() {
+  const d = loadData();
+  const rm = parseFloat(document.getElementById('set-1rm').value);
+  const goal = parseFloat(document.getElementById('set-goal').value) || 300;
+  const equipment = document.getElementById('set-equipment').value;
+  const days = parseInt(document.getElementById('set-days').value);
+  const barWeight = parseFloat(document.getElementById('set-bar').value) || 45;
+  const smallestPlate = parseFloat(document.getElementById('set-plate').value) || 2.5;
+  const ohpStart = parseFloat(document.getElementById('set-ohp').value) || 90;
+
+  if (!rm || rm < 1) { alert('Please enter your estimated 1RM first.'); return; }
+
+  d.settings = { goal, equipment, daysPerWeek: days, barWeight, smallestPlate };
+  d.estimated1RM = rm;
+  // Training max = 90% of 1RM — the single on week 1 will be ~90% of TM (= ~81% of 1RM, RPE ~7.5)
+  d.trainingMax = Math.round(rm * 0.935); // calibrated so week1 single ≈ 90% TM ≈ RPE 7.5–8
+  d.currentWeek = 1;
+  d.currentDay = 1;
+  d.failStreak = {};
+  d.ohpWeight = ohpStart;
+  d.ohpRepsPerSet = 5; // tracks OHP reps toward 4×8 threshold
+
+  // Initialize assistance weights
+  d.assistanceWeights = {};
+  Object.entries(ASSISTANCE_LIBRARY).forEach(([name, info]) => {
+    d.assistanceWeights[name] = { weight: info.startWeight, repTarget: info.repRange[0] };
+  });
+
+  saveData(d);
+  updateHeader();
+  showPage('today');
+}
+
+function resetAll() {
+  if (confirm('Reset ALL data? This cannot be undone.')) {
+    localStorage.removeItem('iron300_data');
+    location.reload();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event && event.target.classList.add('active');
+  // Find the right button
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(name)) b.classList.add('active');
+  });
+
+  switch(name) {
+    case 'today': renderToday(); break;
+    case 'program': renderProgram(); break;
+    case 'progress': renderProgress(); break;
+    case 'history': renderHistory(); break;
+    case 'settings': renderSettings(); break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER TODAY
+// ═══════════════════════════════════════════════════════════
+
+function renderToday() {
+  const d = loadData();
+  const el = document.getElementById('today-content');
+
+  if (!d.trainingMax) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">Welcome to IRON 300</div>
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7">
+          Your training data isn't set up yet. Enter your current bench stats to generate your personalized program.
+        </p>
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7">
+          Based on your recent lift: <strong style="color:var(--accent)">235 lbs × 4 reps</strong> — your estimated 1RM is approximately <strong style="color:var(--accent)">${calc1RM(235,4)} lbs</strong>.
+        </p>
+        <button class="btn btn-primary" onclick="showPage('settings')">Set Up My Program →</button>
+      </div>`;
+
+    // Pre-fill settings with their data
+    setTimeout(() => {
+      const rmEl = document.getElementById('set-1rm');
+      if (rmEl && !rmEl.value) rmEl.value = calc1RM(235, 4);
+    }, 100);
+    return;
+  }
+
+  const week = d.currentWeek;
+  const dayIdx = d.currentDay - 1;
+  const structure = getDayStructure(d.settings.daysPerWeek);
+  const dayDef = structure[dayIdx % structure.length];
+
+  // Check if today is already logged
+  const todayLog = d.workoutLogs.find(l => l.week === week && l.day === d.currentDay);
+
+  const focusLabels = { heavy: 'HEAVY DAY', volume: 'VOLUME DAY', speed: 'SPEED DAY', ohp: 'OHP DAY' };
+  const focusBadge = focusLabels[dayDef.benchFocus] || 'ACCESSORY';
+
+  let html = `
+    <div class="day-header">
+      <div>
+        <div class="day-title">${dayDef.label}</div>
+        <div style="color:var(--muted); font-size:13px">Week ${week} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center">
+        ${week % 4 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
+      </div>
+    </div>`;
+
+  if (todayLog) {
+    html += `<div class="alert alert-success">✓ Workout logged! <a href="#" onclick="showPage('history')" style="color:var(--green)">View in History</a> — <a href="#" onclick="unlockToday()" style="color:var(--green)">Edit</a></div>`;
+
+    // Show failure guidance if any exercises were failed
+    const failures = todayLog.failGuidance || [];
+    if (failures.length > 0) {
+      html += `<div class="card" style="border-color: var(--accent2)">
+        <div class="card-title" style="color:var(--accent2)">⚠ Failure Guidance</div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.6">
+          You marked ${failures.length} exercise${failures.length > 1 ? 's' : ''} as failed. Here's exactly what to do next session for each one:
+        </p>`;
+
+      failures.forEach(f => {
+        const protocolColors = { strength: 'var(--accent2)', hypertrophy: 'var(--blue)', pump: 'var(--green)' };
+        const protocolNames = { strength: 'STRENGTH PROTOCOL', hypertrophy: 'HYPERTROPHY PROTOCOL', pump: 'PUMP PROTOCOL' };
+        const color = protocolColors[f.protocol] || 'var(--blue)';
+        html += `<div style="border:1px solid ${color}; border-radius:6px; padding:14px; margin-bottom:10px; background:rgba(0,0,0,0.2)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <div style="font-weight:600; font-size:15px">${f.name}</div>
+            <span style="font-size:10px; font-weight:700; letter-spacing:1px; color:${color}; border:1px solid ${color}; padding:2px 7px; border-radius:3px; text-transform:uppercase">${protocolNames[f.protocol]}</span>
+          </div>
+          <div style="font-size:13px; color:var(--text); line-height:1.7">${f.instruction}</div>
+          <div style="margin-top:8px; font-size:12px; color:var(--muted)">
+            Next session target: <span style="color:var(--accent); font-family:'DM Mono',monospace">${f.newWeight} lbs × ${f.newReps} reps</span>
+          </div>
+        </div>`;
+      });
+
+      html += `</div>`;
+    }
+  }
+
+  // BENCH / OHP SECTION
+  if (dayDef.benchFocus) {
+    const isDeload = (week % 4 === 0);
+    const barWeight = d.settings.barWeight;
+    const smallestPlate = d.settings.smallestPlate;
+
+    if (dayDef.benchFocus === 'ohp') {
+      // ── OHP DAY ──
+      const ohpWeight = d.ohpWeight || 90;
+      const ohpInfo = generateOHPSets(week, ohpWeight, barWeight, smallestPlate);
+      const loggedOHP = todayLog?.exercises?.find(e => e.name === 'Overhead Press');
+
+      html += `<div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
+          <div class="card-title" style="margin-bottom:0">Overhead Press</div>
+          ${isDeload ? '<span class="deload-badge">DELOAD</span>' : '<span class="day-badge">SHOULDER STRENGTH</span>'}
+        </div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:14px">${ohpInfo.label} · Current weight: <span style="color:var(--accent)">${ohpWeight} lbs</span></div>
+
+        <div style="font-size:12px; color:var(--muted); margin-bottom:10px; padding:8px 12px; background:var(--surface2); border-radius:4px">
+          <strong style="color:var(--text)">Warmup:</strong>
+          ${ohpInfo.warmups.map(w => `${w.weight}×${w.reps}`).join(' → ')}
+        </div>
+
+        <div class="note-box" style="margin-bottom:12px">${ohpInfo.note}</div>
+
+        <div style="display:grid; grid-template-columns: 60px 1fr 1fr 90px; gap:8px; margin-bottom:8px">
+          <div class="set-label">SET</div>
+          <div class="set-label">WEIGHT (lbs)</div>
+          <div class="set-label">REPS DONE</div>
+          <div class="set-label">STATUS</div>
+        </div>`;
+
+      ohpInfo.sets.forEach((s, i) => {
+        const loggedSet = loggedOHP?.sets?.[i];
+        const statusClass = loggedSet ? (loggedSet.fail ? 'fail' : 'done') : '';
+        const statusText = loggedSet ? (loggedSet.fail ? 'FAIL' : 'DONE') : '—';
+        html += `<div class="set-row">
+          <div class="set-num" style="font-size:11px; color:var(--muted)">S${i+1}</div>
+          <div><input class="set-input" id="ohp-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} /></div>
+          <div><input class="set-input" id="ohp-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
+          <button class="set-status-btn ${statusClass}" id="ohp-s-${i}" onclick="toggleSetStatus('ohp',${i})" ${todayLog?'disabled':''}>${statusText}</button>
+        </div>`;
+      });
+      html += `</div>`;
+
+    } else {
+      // ── BENCH DAY (heavy / volume / speed) ──
+      const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate);
+      const prevFail = (d.failStreak['Bench Press'] || 0) >= 2;
+      const loggedBench = todayLog?.exercises?.find(e => e.name === 'Bench Press');
+
+      html += `<div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
+          <div class="card-title" style="margin-bottom:0">Bench Press</div>
+          <div style="display:flex; gap:8px; align-items:center">
+            ${isDeload ? '<span class="deload-badge">DELOAD</span>' : `<span class="day-badge">${benchInfo.label}</span>`}
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:14px">Training Max: <span style="color:var(--accent)">${d.trainingMax} lbs</span> · Week ${week} · Goal: <span style="color:var(--accent)">${d.settings.goal} lbs</span></div>`;
+
+      if (prevFail) {
+        html += `<div class="alert alert-warn">⚠ You've missed the single twice in a row. Weight has been reduced. Build back up — the PR is coming.</div>`;
+      }
+
+      // Warmup table
+      if (benchInfo.warmups && benchInfo.warmups.length > 0) {
+        html += `<div style="margin-bottom:14px">
+          <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px">Warmup Sets</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px">`;
+        benchInfo.warmups.forEach(w => {
+          html += `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:5px 10px; font-family:'DM Mono',monospace; font-size:12px">
+            ${w.weight}<span style="color:var(--muted)">×</span>${w.reps}${w.note ? `<span style="color:var(--muted); font-size:10px; margin-left:4px">${w.note}</span>` : ''}
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
+
+      if (benchInfo.note) {
+        html += `<div class="note-box" style="margin-bottom:12px">${benchInfo.note}</div>`;
+      }
+
+      html += `<div style="display:grid; grid-template-columns: ${dayDef.benchFocus === 'heavy' ? '120px' : '60px'} 1fr 1fr 90px; gap:8px; margin-bottom:8px">
+        <div class="set-label">${dayDef.benchFocus === 'heavy' ? 'SET TYPE' : 'SET'}</div>
+        <div class="set-label">WEIGHT (lbs)</div>
+        <div class="set-label">REPS DONE</div>
+        <div class="set-label">STATUS</div>
+      </div>`;
+
+      benchInfo.sets.forEach((s, i) => {
+        const loggedSet = loggedBench?.sets?.[i];
+        const statusClass = loggedSet ? (loggedSet.fail ? 'fail' : 'done') : '';
+        const statusText = loggedSet ? (loggedSet.fail ? 'FAIL' : 'DONE') : '—';
+        const labelStyle = s.isSingle
+          ? 'color:var(--accent); font-size:11px; font-weight:700'
+          : 'color:var(--muted); font-size:11px';
+
+        html += `<div class="set-row">
+          <div class="set-num" style="${labelStyle}">${s.label || `S${i+1}`}</div>
+          <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} /></div>
+          <div><input class="set-input" id="bench-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
+          <button class="set-status-btn ${statusClass}" id="bench-s-${i}" onclick="toggleSetStatus('bench',${i})" ${todayLog?'disabled':''}>${statusText}</button>
+        </div>`;
+      });
+
+      html += `</div>`;
+    }
+  }
+
+  // ASSISTANCE EXERCISES
+  dayDef.assistance.forEach((exName, exIdx) => {
+    const exDef = ASSISTANCE_LIBRARY[exName];
+    if (!exDef) return;
+    const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
+    const loggedEx = todayLog?.exercises?.find(e => e.name === exName);
+
+    html += `<div class="exercise-block">
+      <div class="exercise-header">
+        <div>
+          <div class="ex-name">${exName}</div>
+          <div class="ex-meta">${exDef.group} · ${exDef.sets} sets · ${exDef.repRange[0]}–${exDef.repRange[1]} reps</div>
+        </div>
+        <div style="text-align:right">
+          <div class="ex-target-label">Target</div>
+          <div class="ex-target">${aw.weight} lbs × ${aw.repTarget}</div>
+          <div style="font-size:9px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:1px">${exDef.failProtocol} mvt</div>
+        </div>
+      </div>
+      <div class="sets-table">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <div style="display:grid; grid-template-columns: 40px 1fr 1fr 90px; gap:8px; flex:1">
+            <div class="set-label">SET</div>
+            <div class="set-label">WEIGHT</div>
+            <div class="set-label">REPS</div>
+            <div class="set-label">STATUS</div>
+          </div>
+          ${!todayLog ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:11px; margin-left:10px; white-space:nowrap" onclick="skipExercise(${exIdx})">Skip Exercise</button>` : ''}
+        </div>`;
+
+    for (let si = 0; si < exDef.sets; si++) {
+      const loggedSet = loggedEx?.sets?.[si];
+      const isSkipped = loggedSet?.skipped;
+      const statusClass = loggedSet ? (isSkipped ? '' : loggedSet.fail ? 'fail' : 'done') : '';
+      const statusText = loggedSet ? (isSkipped ? 'SKIP' : loggedSet.fail ? 'FAIL' : 'DONE') : '—';
+
+      html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
+        <div class="set-num">S${si+1}</div>
+        <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : aw.weight}" ${todayLog?'readonly':''} /></div>
+        <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : aw.repTarget}" ${todayLog?'readonly':''} /></div>
+        <button class="set-status-btn ${statusClass}" id="ex-${exIdx}-s-${si}" onclick="toggleAssistStatus(${exIdx},${si})" ${todayLog?'disabled':''} style="${isSkipped?'opacity:0.4':''}">
+          ${statusText}
+        </button>
+      </div>`;
+    }
+
+    html += `</div></div>`;
+  });
+
+  if (!todayLog) {
+    html += `<div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="logWorkout()">✓ Log Workout & Progress</button>
+      <button class="btn btn-secondary" onclick="skipWorkout()">Skip Today</button>
+    </div>`;
+  } else {
+    html += `<div style="margin-top:20px">
+      <button class="btn btn-primary" onclick="advanceDay()">Next Workout →</button>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+  updateHeader();
+}
+
+// Track set statuses in memory before logging
+let pendingStatuses = {}; // 'bench-0': {done:bool, fail:bool}
+
+function toggleSetStatus(type, idx) {
+  const key = type + '-' + idx;
+  if (!pendingStatuses[key]) pendingStatuses[key] = { done: false, fail: false };
+  const s = pendingStatuses[key];
+  const btn = document.getElementById(`${type}-s-${idx}`);
+
+  if (!s.done && !s.fail) {
+    s.done = true; s.fail = false;
+    btn.className = 'set-status-btn done';
+    btn.textContent = 'DONE';
+  } else if (s.done) {
+    s.done = false; s.fail = true;
+    btn.className = 'set-status-btn fail';
+    btn.textContent = 'FAIL';
+  } else {
+    s.done = false; s.fail = false;
+    btn.className = 'set-status-btn';
+    btn.textContent = '—';
+  }
+}
+
+function toggleAssistStatus(exIdx, si) {
+  const key = `ex-${exIdx}-${si}`;
+  if (!pendingStatuses[key]) pendingStatuses[key] = { done: false, fail: false, skipped: false };
+  const s = pendingStatuses[key];
+  const btn = document.getElementById(`ex-${exIdx}-s-${si}`);
+
+  // Cycle: — → DONE → FAIL → —
+  if (!s.done && !s.fail) {
+    s.done = true; s.fail = false; s.skipped = false;
+    btn.className = 'set-status-btn done';
+    btn.textContent = 'DONE';
+  } else if (s.done) {
+    s.done = false; s.fail = true; s.skipped = false;
+    btn.className = 'set-status-btn fail';
+    btn.textContent = 'FAIL';
+  } else {
+    s.done = false; s.fail = false; s.skipped = false;
+    btn.className = 'set-status-btn';
+    btn.textContent = '—';
+  }
+}
+
+function skipExercise(exIdx) {
+  // Mark all sets of this exercise as skipped in pendingStatuses
+  const exDef = Object.values(ASSISTANCE_LIBRARY)[0]; // just need set count
+  // Get set count from the DOM
+  let si = 0;
+  while (document.getElementById(`ex-${exIdx}-s-${si}`)) {
+    const key = `ex-${exIdx}-${si}`;
+    pendingStatuses[key] = { done: false, fail: false, skipped: true };
+    const btn = document.getElementById(`ex-${exIdx}-s-${si}`);
+    if (btn) {
+      btn.className = 'set-status-btn';
+      btn.textContent = 'SKIP';
+      btn.style.opacity = '0.4';
+    }
+    si++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOG WORKOUT
+// ═══════════════════════════════════════════════════════════
+
+function logWorkout() {
+  const d = loadData();
+  const week = d.currentWeek;
+  const dayIdx = d.currentDay - 1;
+  const structure = getDayStructure(d.settings.daysPerWeek);
+  const dayDef = structure[dayIdx % structure.length];
+  const barWeight = d.settings.barWeight;
+  const smallestPlate = d.settings.smallestPlate;
+
+  const exercises = [];
+
+  // ── OHP DAY ──
+  if (dayDef.benchFocus === 'ohp') {
+    const ohpWeight = d.ohpWeight || 90;
+    const ohpInfo = generateOHPSets(week, ohpWeight, barWeight, smallestPlate);
+    let allDone = true;
+    let totalReps = 0;
+    const sets = ohpInfo.sets.map((s, i) => {
+      const w = parseFloat(document.getElementById(`ohp-w-${i}`)?.value) || s.targetWeight;
+      const r = parseInt(document.getElementById(`ohp-r-${i}`)?.value) || s.targetReps;
+      const st = pendingStatuses[`ohp-${i}`] || {};
+      const fail = st.fail || false;
+      if (fail) allDone = false;
+      totalReps += r;
+      return { weight: w, reps: r, done: st.done || !st.fail, fail };
+    });
+    exercises.push({ name: 'Overhead Press', sets });
+
+    // OHP progression: hit 4×8 → add 5 lbs, reset to 4×5
+    const avgReps = totalReps / ohpInfo.sets.length;
+    if (allDone && avgReps >= 8) {
+      d.ohpWeight = roundToPlate((d.ohpWeight || 90) + 5, barWeight, smallestPlate);
+      d.ohpRepsPerSet = 5;
+    } else if (allDone && avgReps >= (d.ohpRepsPerSet || 5)) {
+      d.ohpRepsPerSet = Math.min(8, (d.ohpRepsPerSet || 5) + 1);
+    }
+
+  // ── BENCH DAYS (heavy / volume / speed) ──
+  } else if (dayDef.benchFocus) {
+    const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate);
+    let singleFailed = false;
+    let singleRPE = null;
+
+    const benchSets = benchInfo.sets.map((s, i) => {
+      const w = parseFloat(document.getElementById(`bench-w-${i}`)?.value) || s.targetWeight;
+      const r = parseInt(document.getElementById(`bench-r-${i}`)?.value) || s.targetReps;
+      const st = pendingStatuses[`bench-${i}`] || {};
+      const fail = st.fail || false;
+      if (fail && s.isSingle) singleFailed = true;
+      return { weight: w, reps: r, done: st.done || !st.fail, fail, isSingle: !!s.isSingle };
+    });
+    exercises.push({ name: 'Bench Press', sets: benchSets });
+
+    // Update estimated 1RM from the top single if successful
+    if (dayDef.benchFocus === 'heavy' && !singleFailed) {
+      const singleSet = benchSets.find(s => s.isSingle);
+      if (singleSet) {
+        // Single at RPE 7.5–8 → estimate true 1RM (add ~10–15%)
+        const est = Math.round(singleSet.weight * 1.12);
+        if (est > (d.estimated1RM || 0)) d.estimated1RM = est;
+      }
+    }
+
+    // Fail streak on heavy single only
+    if (dayDef.benchFocus === 'heavy') {
+      if (!d.failStreak['Bench Press']) d.failStreak['Bench Press'] = 0;
+      if (singleFailed) {
+        d.failStreak['Bench Press']++;
+      } else {
+        d.failStreak['Bench Press'] = 0;
+      }
+      if (d.failStreak['Bench Press'] >= 2) {
+        d.trainingMax = Math.round(d.trainingMax * 0.90);
+        d.failStreak['Bench Press'] = 0;
+      }
+    }
+  }
+
+  // ── ASSISTANCE ──
+  const failGuidance = [];
+
+  dayDef.assistance.forEach((exName, exIdx) => {
+    const exDef = ASSISTANCE_LIBRARY[exName];
+    if (!exDef) return;
+    const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
+    const protocol = FAIL_PROTOCOLS[exDef.failProtocol] || FAIL_PROTOCOLS.hypertrophy;
+
+    let anyFail = false;
+    let anyDone = false;
+    let anySkipped = false;
+    let allDone = true;
+    let totalReps = 0;
+
+    const sets = [];
+    for (let si = 0; si < exDef.sets; si++) {
+      const w = parseFloat(document.getElementById(`ex-${exIdx}-w-${si}`)?.value) || aw.weight;
+      const r = parseInt(document.getElementById(`ex-${exIdx}-r-${si}`)?.value) || aw.repTarget;
+      const st = pendingStatuses[`ex-${exIdx}-${si}`] || {};
+
+      // Untagged (—) = treated as skipped, no progression either way
+      const skipped = st.skipped || (!st.done && !st.fail);
+      const fail = st.fail || false;
+      const done = st.done || false;
+
+      if (skipped) { anySkipped = true; allDone = false; }
+      if (fail)    { anyFail = true;    allDone = false; }
+      if (done)    { anyDone = true; totalReps += r; }
+
+      sets.push({ weight: w, reps: r, done, fail, skipped });
+    }
+    exercises.push({ name: exName, sets });
+
+    // Progression decision:
+    if (anySkipped && !anyDone && !anyFail) {
+      // Entire exercise skipped — hold everything, no change
+      d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
+    } else if (anyFail) {
+      // Any set failed — apply failure protocol
+      const newW = protocol.newWeight(aw.weight);
+      const newR = protocol.newReps(aw.repTarget, exDef.repRange);
+      d.assistanceWeights[exName] = { weight: newW, repTarget: newR };
+      failGuidance.push({
+        name: exName,
+        group: exDef.group,
+        protocol: exDef.failProtocol,
+        instruction: protocol.getInstruction(aw.weight, exDef.repRange),
+        newWeight: newW,
+        newReps: newR,
+      });
+    } else if (allDone) {
+      const avgReps = totalReps / exDef.sets;
+      if (avgReps >= exDef.repRange[1]) {
+        // Hit top of rep range on every set — increase weight
+        const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
+        d.assistanceWeights[exName] = {
+          weight: roundToPlate(aw.weight + increment, barWeight, smallestPlate),
+          repTarget: exDef.repRange[0]
+        };
+      } else {
+        // All sets done but below top — inch up rep target
+        d.assistanceWeights[exName] = {
+          weight: aw.weight,
+          repTarget: Math.min(exDef.repRange[1], aw.repTarget + 1)
+        };
+      }
+    } else {
+      // Partial (some done, some skipped, none failed) — hold, no change
+      d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
+    }
+  });
+
+  d.workoutLogs.push({
+    week: d.currentWeek,
+    day: d.currentDay,
+    date: new Date().toISOString(),
+    exercises,
+    failGuidance,
+  });
+  saveData(d);
+  pendingStatuses = {};
+  renderToday();
+}
+
+function advanceDay() {
+  const d = loadData();
+  const structure = getDayStructure(d.settings.daysPerWeek);
+
+  if (d.currentDay >= structure.length) {
+    d.currentDay = 1;
+    d.currentWeek++;
+    // Every completed week (non-deload): +2.5 lbs to training max
+    // Week 4, 8, 12... are deload — no increment on those
+    const newWeek = d.currentWeek;
+    if (newWeek % 4 !== 1) { // don't add after deload week
+      d.trainingMax = roundToPlate(d.trainingMax + 2.5, d.settings.barWeight, d.settings.smallestPlate);
+    }
+  } else {
+    d.currentDay++;
+  }
+
+  saveData(d);
+  pendingStatuses = {};
+  renderToday();
+}
+
+function skipWorkout() {
+  if (confirm('Skip today and move to next workout?')) {
+    advanceDay();
+  }
+}
+
+function unlockToday() {
+  const d = loadData();
+  d.workoutLogs = d.workoutLogs.filter(l => !(l.week === d.currentWeek && l.day === d.currentDay));
+  saveData(d);
+  pendingStatuses = {};
+  renderToday();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER PROGRAM
+// ═══════════════════════════════════════════════════════════
+
+function renderProgram() {
+  const d = loadData();
+  const el = document.getElementById('program-content');
+
+  if (!d.trainingMax) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Set up your program first</div><br><button class="btn btn-primary" onclick="showPage('settings')">Go to Settings</button></div>`;
+    return;
+  }
+
+  const structure = getDayStructure(d.settings.daysPerWeek);
+  const weekInCycle = ((d.currentWeek - 1) % 4) + 1;
+  const isDeloadWeek = d.currentWeek % 4 === 0;
+  const phaseLabels = { 1: 'Build Week 1', 2: 'Build Week 2', 3: 'Build Week 3', 4: 'Deload' };
+
+  let html = `
+    <div class="card">
+      <div class="card-title">Current Training Block</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-box-val">${d.trainingMax}</div><div class="stat-box-label">Training Max (lbs)</div></div>
+        <div class="stat-box"><div class="stat-box-val">${d.estimated1RM || '—'}</div><div class="stat-box-label">Est. 1RM (lbs)</div></div>
+        <div class="stat-box"><div class="stat-box-val">${d.currentWeek}</div><div class="stat-box-label">Current Week</div></div>
+        <div class="stat-box"><div class="stat-box-val">${d.ohpWeight || 90}</div><div class="stat-box-label">OHP Weight (lbs)</div></div>
+      </div>
+      <div class="note-box">
+        <strong>Bench Progression:</strong> +2.5 lbs to training max each week. Every 4th week is a deload. The top single climbs from ~90% of TM in week 1, adding 2.5 lbs each week — this is your strength signal for the 300 lb goal.
+      </div>
+    </div>`;
+
+  // Show current 4-week block
+  const blockStart = Math.floor((d.currentWeek - 1) / 4) * 4 + 1;
+  for (let wk = blockStart; wk <= blockStart + 3; wk++) {
+    const isCurrentWeek = wk === d.currentWeek;
+    const isDeload = wk % 4 === 0;
+
+    html += `<div class="card" style="border-color: ${isCurrentWeek ? 'var(--accent)' : 'var(--border)'}">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+        <div>
+          <div class="card-title" style="margin-bottom:0">Week ${wk}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:2px">${isDeload ? 'Deload — recover & reset' : 'Training Max: ' + roundToPlate((d.trainingMax - (d.currentWeek - wk) * 2.5), d.settings.barWeight, d.settings.smallestPlate) + ' lbs'}</div>
+        </div>
+        <div style="display:flex; gap:6px">
+          ${isCurrentWeek ? '<span class="day-badge">CURRENT</span>' : ''}
+          ${isDeload ? '<span class="deload-badge">DELOAD</span>' : ''}
+        </div>
+      </div>`;
+
+    const weekTM = roundToPlate((d.trainingMax - (d.currentWeek - wk) * 2.5), d.settings.barWeight, d.settings.smallestPlate);
+
+    structure.forEach(day => {
+      if (!day.benchFocus || day.benchFocus === 'ohp') return;
+      const benchInfo = generateBenchSets(day.benchFocus, wk, weekTM, d.settings.barWeight, d.settings.smallestPlate);
+      html += `<div style="margin-bottom:10px">
+        <div style="font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">${day.label.split('—')[1]?.trim() || day.label}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap">`;
+      benchInfo.sets.forEach(s => {
+        html += `<div style="background:var(--surface2); border:1px solid ${s.isSingle ? 'var(--accent)' : 'var(--border)'}; border-radius:4px; padding:5px 10px; font-family:'DM Mono',monospace; font-size:12px">
+          <span style="color:${s.isSingle ? 'var(--accent)' : 'var(--text)'}">${s.targetWeight}</span><span style="color:var(--muted)">×</span><span>${s.targetReps}</span>
+          ${s.label ? `<span style="color:var(--muted); font-size:10px; margin-left:3px">${s.label}</span>` : ''}
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+
+    html += `</div>`;
+  }
+
+  // Weekly volume summary
+  const daysForVol = getDayStructure(d.settings.daysPerWeek);
+  const allExercisesForVol = [...new Set(daysForVol.flatMap(day => day.assistance))];
+  const volumeByGroup = {};
+  allExercisesForVol.forEach(exName => {
+    const exDef = ASSISTANCE_LIBRARY[exName];
+    if (!exDef) return;
+    const g = exDef.group;
+    if (!volumeByGroup[g]) volumeByGroup[g] = 0;
+    volumeByGroup[g] += exDef.sets;
+  });
+
+  const muscleOrder = ['back','shoulders','biceps','triceps'];
+  const muscleLabels = { back:'Back', shoulders:'Shoulders', biceps:'Biceps', triceps:'Triceps' };
+
+  html += `<div class="card">
+    <div class="card-title">Weekly Volume Summary</div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-bottom:4px">`;
+
+  muscleOrder.forEach(g => {
+    const total = volumeByGroup[g] || 0;
+    const pctFill = Math.min(100, Math.round((total / 20) * 100));
+    const color = total < 12 ? 'var(--red)' : total <= 20 ? 'var(--green)' : 'var(--blue)';
+    html += `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px">
+      <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">${muscleLabels[g]}</div>
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:32px; color:${color}; line-height:1">${total}</div>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:8px">sets / week <span style="color:${color}">(target 12–20)</span></div>
+      <div class="progress-bar-wrap" style="height:6px">
+        <div class="progress-bar-fill" style="width:${pctFill}%; background:${color}"></div>
+      </div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+
+  // Assistance progression table
+  html += `<div class="card">
+    <div class="card-title">Assistance Progression</div>
+    <table class="history-table">
+      <thead><tr><th>Exercise</th><th>Muscle</th><th>Sets/Wk</th><th>Current Weight</th><th>Target Reps</th><th>Increases At</th></tr></thead>
+      <tbody>`;
+
+  const allExercises = [...new Set(daysForVol.flatMap(day => day.assistance))];
+
+  muscleOrder.forEach(g => {
+    allExercises.filter(exName => ASSISTANCE_LIBRARY[exName]?.group === g).forEach(exName => {
+      const exDef = ASSISTANCE_LIBRARY[exName];
+      if (!exDef) return;
+      const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
+      const increment = (exDef.group === 'back' || exDef.group === 'chest') ? 5 : 2.5;
+      const nextWeight = roundToPlate(aw.weight + increment, d.settings.barWeight, d.settings.smallestPlate);
+      html += `<tr>
+        <td style="font-family:'DM Sans',sans-serif; font-weight:500">${exName}</td>
+        <td style="color:var(--muted)">${muscleLabels[exDef.group] || exDef.group}</td>
+        <td style="color:var(--accent); font-family:'DM Mono',monospace">${exDef.sets}</td>
+        <td style="color:var(--accent)">${aw.weight} lbs</td>
+        <td>${aw.repTarget} reps</td>
+        <td style="color:var(--muted)">${nextWeight} lbs (at ${exDef.repRange[1]} reps)</td>
+      </tr>`;
+    });
+  });
+
+  html += `</tbody></table></div>`;
+
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER PROGRESS
+// ═══════════════════════════════════════════════════════════
+
+function renderProgress() {
+  const d = loadData();
+  const el = document.getElementById('progress-content');
+
+  if (!d.trainingMax) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📈</div><div class="empty-state-text">Complete some workouts to see progress</div></div>`;
+    return;
+  }
+
+  const goal = d.settings.goal;
+  const current1RM = d.estimated1RM || 0;
+  const pctToGoal = Math.min(100, Math.round(current1RM / goal * 100));
+
+  // Calculate 1RM history from bench logs
+  const benchHistory = d.workoutLogs
+    .map(log => {
+      const bench = log.exercises?.find(e => e.name === 'Bench Press');
+      if (!bench) return null;
+      const best = bench.sets.filter(s => !s.fail).reduce((best, s) => {
+        const rm = calc1RM(s.weight, s.reps);
+        return rm > best ? rm : best;
+      }, 0);
+      return best > 0 ? { week: log.week, day: log.day, date: log.date, rm: best } : null;
+    })
+    .filter(Boolean);
+
+  let html = `
+    <div class="card">
+      <div class="card-title">Road to 300</div>
+      <div style="display:flex; gap:16px; align-items:center; margin-bottom:16px; flex-wrap:wrap">
+        <div class="big-lift" style="flex:1; min-width:120px">
+          <div class="big-lift-num">${current1RM || '—'}</div>
+          <div class="big-lift-unit">LBS</div>
+          <div class="big-lift-label">Estimated 1RM</div>
+        </div>
+        <div style="flex:2; min-width:200px">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px">
+            <span>Current: ${current1RM} lbs</span><span>Goal: ${goal} lbs</span>
+          </div>
+          <div class="progress-bar-wrap" style="height:16px">
+            <div class="progress-bar-fill" style="width:${pctToGoal}%"></div>
+          </div>
+          <div style="text-align:center; font-family:'Bebas Neue',sans-serif; font-size:36px; color:var(--accent); margin-top:8px">${pctToGoal}%</div>
+          <div style="text-align:center; font-size:12px; color:var(--muted)">
+            ${goal - current1RM > 0 ? `${goal - current1RM} lbs to go` : '🎉 Goal Reached!'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // Stats
+  html += `<div class="stats-grid">
+    <div class="stat-box"><div class="stat-box-val">${d.workoutLogs.length}</div><div class="stat-box-label">Workouts Done</div></div>
+    <div class="stat-box"><div class="stat-box-val">${d.currentWeek}</div><div class="stat-box-label">Weeks In</div></div>
+    <div class="stat-box"><div class="stat-box-val">${d.trainingMax}</div><div class="stat-box-label">Training Max</div></div>
+    <div class="stat-box"><div class="stat-box-val">${benchHistory.length > 1 ? '+' + (benchHistory[benchHistory.length-1].rm - benchHistory[0].rm) : '—'}</div><div class="stat-box-label">1RM Gained (lbs)</div></div>
+  </div>`;
+
+  // 1RM History
+  if (benchHistory.length > 0) {
+    html += `<div class="card">
+      <div class="card-title">Bench Press 1RM History</div>`;
+
+    const maxRM = Math.max(...benchHistory.map(h => h.rm), goal);
+    html += `<div style="position:relative; height:140px; border-left:1px solid var(--border); border-bottom:1px solid var(--border); margin: 0 0 8px 30px">`;
+
+    benchHistory.forEach((h, i) => {
+      const x = benchHistory.length === 1 ? 50 : (i / (benchHistory.length - 1)) * 100;
+      const y = 100 - (h.rm / maxRM) * 90;
+      html += `<div style="position:absolute; left:${x}%; bottom:${(h.rm/maxRM)*90}%; transform:translate(-50%,50%)">
+        <div style="width:8px; height:8px; background:var(--accent); border-radius:50%;"></div>
+        <div style="font-size:9px; color:var(--muted); text-align:center; margin-top:2px">${h.rm}</div>
+      </div>`;
+    });
+
+    // Goal line
+    const goalY = (goal / maxRM) * 90;
+    html += `<div style="position:absolute; bottom:${goalY}%; left:0; right:0; border-top:1px dashed var(--accent2); opacity:0.5"></div>
+      <div style="position:absolute; bottom:${goalY}%; right:4px; font-size:9px; color:var(--accent2)">GOAL</div>`;
+
+    html += `</div>
+      <div style="font-size:11px; color:var(--muted); text-align:center; margin-top:4px">Each dot = 1 bench session logged</div>
+    </div>`;
+  }
+
+  // Projected timeline
+  if (benchHistory.length >= 2) {
+    const avgGainPerWeek = (benchHistory[benchHistory.length-1].rm - benchHistory[0].rm) / Math.max(1, d.currentWeek - 1);
+    const weeksLeft = avgGainPerWeek > 0 ? Math.ceil((goal - current1RM) / avgGainPerWeek) : null;
+
+    if (weeksLeft && weeksLeft > 0) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + weeksLeft * 7);
+      html += `<div class="note-box">
+        <strong>Projected Timeline:</strong> Based on your current rate of ~${avgGainPerWeek.toFixed(1)} lbs/week, you'll hit ${goal} lbs around <strong>${targetDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</strong> (${weeksLeft} weeks).
+      </div>`;
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER HISTORY
+// ═══════════════════════════════════════════════════════════
+
+function renderHistory() {
+  const d = loadData();
+  const el = document.getElementById('history-content');
+
+  if (!d.workoutLogs || d.workoutLogs.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📓</div><div class="empty-state-text">No workouts logged yet</div></div>`;
+    return;
+  }
+
+  let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+    <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px">Workout Log</div>
+    <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+  </div>`;
+
+  const sorted = [...d.workoutLogs].reverse();
+
+  sorted.forEach(log => {
+    const date = new Date(log.date).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+    const bench = log.exercises?.find(e => e.name === 'Bench Press');
+    const hasFail = log.exercises?.some(e => e.sets.some(s => s.fail));
+    const allGood = !hasFail;
+
+    html += `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <div>
+          <div style="font-weight:600">Week ${log.week} · Day ${log.day}</div>
+          <div style="font-size:12px; color:var(--muted)">${date}</div>
+        </div>
+        <span class="tag ${hasFail ? 'tag-fail' : 'tag-success'}">${hasFail ? 'Had Fails' : 'Clean Session'}</span>
+      </div>`;
+
+    if (bench) {
+      const topSet = bench.sets.filter(s => !s.fail).reduce((b, s) => (calc1RM(s.weight, s.reps) > calc1RM(b.weight, b.reps) ? s : b), bench.sets[0]);
+      html += `<div style="margin-bottom:10px; padding:10px; background:var(--surface2); border-radius:4px">
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Bench Press</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap">`;
+      bench.sets.forEach((s, i) => {
+        html += `<span class="tag ${s.fail ? 'tag-fail' : 'tag-success'}">${s.weight}×${s.reps}</span>`;
+      });
+      html += `</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:6px">Best est. 1RM: <span style="color:var(--accent)">${calc1RM(topSet.weight, topSet.reps)} lbs</span></div>
+      </div>`;
+    }
+
+    // Assistance summary
+    const assistance = log.exercises?.filter(e => e.name !== 'Bench Press') || [];
+    if (assistance.length > 0) {
+      html += `<div style="display:flex; flex-wrap:wrap; gap:6px">`;
+      assistance.forEach(ex => {
+        const anyFail = ex.sets.some(s => s.fail);
+        html += `<span class="tag ${anyFail ? 'tag-fail' : 'tag-success'}" style="font-family:'DM Sans',sans-serif; font-size:11px">${ex.name}</span>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function exportCSV() {
+  const d = loadData();
+  if (!d.workoutLogs.length) return;
+
+  let csv = 'Date,Week,Day,Exercise,Set,Weight,Reps,Status\n';
+
+  d.workoutLogs.forEach(log => {
+    const date = new Date(log.date).toLocaleDateString();
+    log.exercises?.forEach(ex => {
+      ex.sets.forEach((s, i) => {
+        csv += `${date},${log.week},${log.day},"${ex.name}",${i+1},${s.weight},${s.reps},${s.fail ? 'FAIL' : 'DONE'}\n`;
+      });
+    });
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'iron300_log.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER SETTINGS
+// ═══════════════════════════════════════════════════════════
+
+function renderSettings() {
+  const d = loadData();
+  if (d.settings) {
+    const s = d.settings;
+    const fields = {
+      'set-1rm': d.estimated1RM,
+      'set-goal': s.goal,
+      'set-ohp': d.ohpWeight || 90,
+      'set-bar': s.barWeight,
+      'set-plate': s.smallestPlate,
+    };
+    Object.entries(fields).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el && val) el.value = val;
+    });
+    const eqEl = document.getElementById('set-equipment');
+    if (s.equipment && eqEl) eqEl.value = s.equipment;
+    const daysEl = document.getElementById('set-days');
+    if (s.daysPerWeek && daysEl) daysEl.value = s.daysPerWeek;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HEADER UPDATE
+// ═══════════════════════════════════════════════════════════
+
+function updateHeader() {
+  const d = loadData();
+  const rm = d.estimated1RM;
+  const goal = d.settings?.goal || 300;
+
+  const rmEl = document.getElementById('header-1rm');
+  const pctEl = document.getElementById('header-pct');
+
+  if (rmEl) rmEl.textContent = rm ? rm + ' lbs' : '—';
+  if (pctEl && rm) pctEl.textContent = Math.min(100, Math.round(rm / goal * 100)) + '%';
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+
+window.addEventListener('DOMContentLoaded', () => {
+  updateHeader();
+  renderToday();
+  renderSettings();
+
+  // Pre-fill 1RM from their stated lift
+  const d = loadData();
+  if (!d.trainingMax) {
+    const rmEl = document.getElementById('set-1rm');
+    if (rmEl) rmEl.value = calc1RM(235, 4);
+  }
+});
+</script>
+</body>
+</html>
