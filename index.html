@@ -623,6 +623,7 @@
   <button class="nav-btn" onclick="showPage('graphs')">Graphs</button>
   <button class="nav-btn" onclick="showPage('progress')">Progress</button>
   <button class="nav-btn" onclick="showPage('history')">History</button>
+  <button class="nav-btn" onclick="showPage('plates')">Plates</button>
   <button class="nav-btn" onclick="showPage('settings')">Settings</button>
 </div>
 
@@ -654,6 +655,11 @@
 <!-- HISTORY PAGE -->
 <div class="page" id="page-history">
   <div id="history-content"></div>
+</div>
+
+<!-- PLATES PAGE -->
+<div class="page" id="page-plates">
+  <div id="plates-content"></div>
 </div>
 
 <!-- SETTINGS PAGE -->
@@ -875,7 +881,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Incline DB Press']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
       },
       {
         label: 'Day 2 — OHP + Lats + Bis',
@@ -1148,6 +1154,7 @@ function showPage(name) {
     case 'graphs': renderGraphs(); break;
     case 'progress': renderProgress(); break;
     case 'history': renderHistory(); break;
+    case 'plates': renderPlates(); break;
     case 'settings': renderSettings(); break;
   }
 }
@@ -1321,16 +1328,15 @@ function renderToday() {
         html += `<div class="note-box" style="margin-bottom:12px">${benchInfo.note}</div>`;
       }
 
-      // Heavy day gets an extra RPE column on the single row
+      // All bench days use the same 4-column layout — RPE goes below the single row, not beside it
       const isHeavy = dayDef.benchFocus === 'heavy';
-      const colTemplate = isHeavy ? '120px 1fr 1fr 90px 90px' : (dayDef.benchFocus === 'speed' ? '60px 1fr 1fr 90px' : '60px 1fr 1fr 90px');
+      const colTemplate = '60px 1fr 1fr 90px';
 
-      html += `<div style="display:grid; grid-template-columns: ${colTemplate}; gap:8px; margin-bottom:8px">
+      html += `<div style="display:grid; grid-template-columns: ${isHeavy ? '120px' : '60px'} 1fr 1fr 90px; gap:8px; margin-bottom:8px">
         <div class="set-label">${isHeavy ? 'SET TYPE' : 'SET'}</div>
         <div class="set-label">WEIGHT (lbs)</div>
         <div class="set-label">REPS DONE</div>
         <div class="set-label">STATUS</div>
-        ${isHeavy ? '<div class="set-label">RPE</div>' : ''}
       </div>`;
 
       benchInfo.sets.forEach((s, i) => {
@@ -1341,24 +1347,26 @@ function renderToday() {
           ? 'color:var(--accent); font-size:11px; font-weight:700'
           : 'color:var(--muted); font-size:11px';
 
-        html += `<div class="set-row" style="grid-template-columns:${colTemplate}">
-          <div class="set-num" style="${labelStyle}">${s.label || `S${i+1}`}</div>
+        const rpe = loggedSet ? (loggedSet.rpe || 0) : 0;
+        const rpeSelect = (isHeavy && s.isSingle) ? (
+          '<div style="margin: -4px 0 10px 0; padding: 8px 10px; background:var(--surface2); border-radius:0 0 6px 6px; border:1px solid var(--border); border-top:none; display:flex; align-items:center; gap:10px; flex-wrap:wrap">' +
+          '<span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px">RPE for this single:</span>' +
+          '<select id="bench-rpe-' + i + '" ' + (todayLog?'disabled':'') + ' style="background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:5px 8px; font-size:13px; cursor:pointer; flex:1; min-width:140px" onchange="highlightRPE(' + i + ', this.value)">' +
+          '<option value="">Select RPE...</option>' +
+          '<option value="6" ' + (rpe==6?'selected':'') + '>6 — Felt easy</option>' +
+          '<option value="7" ' + (rpe==7?'selected':'') + '>7 — Solid, more in tank</option>' +
+          '<option value="8" ' + (rpe==8?'selected':'') + '>8 — Target ✓</option>' +
+          '<option value="9" ' + (rpe==9?'selected':'') + '>9 — Hard grind</option>' +
+          '<option value="10" ' + (rpe==10?'selected':'') + '>10 — Absolute max</option>' +
+          '</select></div>'
+        ) : '';
+
+        html += `<div class="set-row" style="grid-template-columns:${isHeavy ? '120px' : '60px'} 1fr 1fr 90px">
+          <div class="set-num" style="${labelStyle}">${s.label || ('S'+(i+1))}</div>
           <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} /></div>
           <div><input class="set-input" id="bench-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
           <button class="set-status-btn ${statusClass}" id="bench-s-${i}" onclick="toggleSetStatus('bench',${i})" ${todayLog?'disabled':''}>${statusText}</button>
-          ${isHeavy && s.isSingle ? `
-            <div>
-              <select class="set-input" id="bench-rpe-${i}" ${todayLog?'disabled':''} style="padding:6px 4px; font-size:12px; cursor:pointer"
-                onchange="highlightRPE(${i}, this.value)">
-                <option value="">RPE</option>
-                <option value="6" ${loggedSet?.rpe==6?'selected':''}>6 — Easy</option>
-                <option value="7" ${loggedSet?.rpe==7?'selected':''}>7 — Solid</option>
-                <option value="8" ${loggedSet?.rpe==8?'selected':''}>8 — Target ✓</option>
-                <option value="9" ${loggedSet?.rpe==9?'selected':''}>9 — Hard</option>
-                <option value="10" ${loggedSet?.rpe==10?'selected':''}>10 — Max</option>
-              </select>
-            </div>` : (isHeavy ? '<div></div>' : '')}
-        </div>`;
+        </div>${rpeSelect}`;
       });
 
       // RPE legend — only on heavy day, only when not yet logged
@@ -1446,10 +1454,19 @@ function renderToday() {
   });
 
   if (!todayLog) {
-    html += `<div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="logWorkout()">✓ Log Workout & Progress</button>
-      <button class="btn btn-secondary" onclick="skipWorkout()">Skip Today</button>
-    </div>`;
+    html += `
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="margin-bottom:8px">Session Notes <span style="font-size:11px; color:var(--muted); font-weight:400">(optional)</span></div>
+        <textarea id="workout-notes" placeholder="How'd it feel? Sleep, energy, anything notable..." 
+          style="width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:6px; 
+          color:var(--text); padding:10px 12px; font-size:14px; font-family:inherit; resize:vertical; 
+          min-height:72px; box-sizing:border-box; outline:none;"
+          oninput="autoSavePending()">${pendingNotes}</textarea>
+      </div>
+      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="logWorkout()">✓ Log Workout & Progress</button>
+        <button class="btn btn-secondary" onclick="skipWorkout()">Skip Today</button>
+      </div>`;
   } else {
     html += `<div style="margin-top:20px">
       <button class="btn btn-primary" onclick="advanceDay()">Next Workout →</button>
@@ -1462,6 +1479,7 @@ function renderToday() {
 
 // Track set statuses in memory before logging
 let pendingStatuses = {}; // 'bench-0': {done:bool, fail:bool}
+let pendingNotes = '';    // workout notes before logging
 
 function highlightRPE(setIdx, rpe) {
   const select = document.getElementById(`bench-rpe-${setIdx}`);
@@ -1481,6 +1499,7 @@ function toggleSetStatus(type, idx) {
     s.done = true; s.fail = false;
     btn.className = 'set-status-btn done';
     btn.textContent = 'DONE';
+    startRestTimer();
   } else if (s.done) {
     s.done = false; s.fail = true;
     btn.className = 'set-status-btn fail';
@@ -1490,6 +1509,7 @@ function toggleSetStatus(type, idx) {
     btn.className = 'set-status-btn';
     btn.textContent = '—';
   }
+  autoSavePending();
 }
 
 function toggleAssistStatus(exIdx, si) {
@@ -1498,11 +1518,11 @@ function toggleAssistStatus(exIdx, si) {
   const s = pendingStatuses[key];
   const btn = document.getElementById(`ex-${exIdx}-s-${si}`);
 
-  // Cycle: — → DONE → FAIL → —
   if (!s.done && !s.fail) {
     s.done = true; s.fail = false; s.skipped = false;
     btn.className = 'set-status-btn done';
     btn.textContent = 'DONE';
+    startRestTimer();
   } else if (s.done) {
     s.done = false; s.fail = true; s.skipped = false;
     btn.className = 'set-status-btn fail';
@@ -1512,6 +1532,54 @@ function toggleAssistStatus(exIdx, si) {
     btn.className = 'set-status-btn';
     btn.textContent = '—';
   }
+  autoSavePending();
+}
+
+// Auto-save pendingStatuses + current input values to localStorage on every tap
+// so iOS Safari page refresh doesn't lose in-progress data
+function autoSavePending() {
+  try {
+    const notesEl = document.getElementById('workout-notes');
+    if (notesEl) pendingNotes = notesEl.value;
+    const inputs = {};
+    document.querySelectorAll('[id^="bench-w-"],[id^="bench-r-"],[id^="ohp-w-"],[id^="ohp-r-"],[id^="ex-"]').forEach(el => {
+      if (el.tagName === 'INPUT') inputs[el.id] = el.value;
+    });
+    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, inputs, notes: pendingNotes }));
+  } catch(e) {}
+}
+
+// Restore pending data after page refresh
+function restorePending() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('iron300_pending'));
+    if (!saved) return;
+    pendingStatuses = saved.statuses || {};
+    pendingNotes = saved.notes || '';
+    setTimeout(() => {
+      Object.entries(pendingStatuses).forEach(([key, s]) => {
+        let btnId;
+        if (key.startsWith('bench-') || key.startsWith('ohp-')) {
+          btnId = key.replace(/^(bench|ohp)-(\d+)$/, '$1-s-$2');
+        } else {
+          btnId = key.replace(/^(ex-\d+)-(\d+)$/, '$1-s-$2');
+        }
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (s.skipped) { btn.textContent = 'SKIP'; btn.style.opacity = '0.4'; }
+        else if (s.done) { btn.className = 'set-status-btn done'; btn.textContent = 'DONE'; }
+        else if (s.fail) { btn.className = 'set-status-btn fail'; btn.textContent = 'FAIL'; }
+      });
+      if (saved.inputs) {
+        Object.entries(saved.inputs).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (el && !el.readOnly) el.value = val;
+        });
+      }
+      const notesEl = document.getElementById('workout-notes');
+      if (notesEl && pendingNotes) notesEl.value = pendingNotes;
+    }, 100);
+  } catch(e) {}
 }
 
 function skipExercise(exIdx) {
@@ -1753,15 +1821,22 @@ function logWorkout() {
     }
   });
 
+  const notesEl = document.getElementById('workout-notes');
+  const sessionNotes = notesEl ? notesEl.value.trim() : (pendingNotes || '');
+
   d.workoutLogs.push({
     week: d.currentWeek,
     day: d.currentDay,
     date: new Date().toISOString(),
     exercises,
     failGuidance,
+    notes: sessionNotes,
   });
   saveData(d);
   pendingStatuses = {};
+  pendingNotes = '';
+  localStorage.removeItem('iron300_pending');
+  stopRestTimer();
   renderToday();
 }
 
@@ -1773,14 +1848,13 @@ function advanceDay() {
     d.currentDay = 1;
     d.currentWeek++;
     const newWeek = d.currentWeek;
-    if (newWeek % 4 !== 1) {
-      // Normal weekly +2.5, then apply RPE bonus (can be +2.5 more, 0, or -2.5)
+    // Don't increase TM when rolling INTO a deload week (week % 4 === 0)
+    if (newWeek % 4 !== 0) {
       const bonus = d.nextTMBonus || 0;
       const increment = 2.5 + bonus;
       if (increment > 0) {
         d.trainingMax = roundToPlate(d.trainingMax + increment, d.settings.barWeight, d.settings.smallestPlate);
       }
-      // Reset bonus after applying
       d.nextTMBonus = 0;
     }
   } else {
@@ -1789,6 +1863,8 @@ function advanceDay() {
 
   saveData(d);
   pendingStatuses = {};
+  localStorage.removeItem('iron300_pending');
+  stopRestTimer();
   renderToday();
 }
 
@@ -1803,6 +1879,8 @@ function unlockToday() {
   d.workoutLogs = d.workoutLogs.filter(l => !(l.week === d.currentWeek && l.day === d.currentDay));
   saveData(d);
   pendingStatuses = {};
+  localStorage.removeItem('iron300_pending');
+  stopRestTimer();
   renderToday();
 }
 
@@ -2111,6 +2189,10 @@ function renderHistory() {
         html += `<span class="tag ${anyFail ? 'tag-fail' : 'tag-success'}" style="font-family:'DM Sans',sans-serif; font-size:11px">${ex.name}</span>`;
       });
       html += `</div>`;
+    }
+
+    if (log.notes) {
+      html += `<div style="margin-top:10px; padding:8px 10px; background:var(--surface2); border-radius:6px; border-left:2px solid var(--muted); font-size:13px; color:var(--muted); font-style:italic">${log.notes}</div>`;
     }
 
     html += `</div>`;
@@ -2517,10 +2599,320 @@ function filterGraphs(group) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════
+// PLATE CALCULATOR
+// ═══════════════════════════════════════════════════════════
+
+function renderPlates() {
+  const el = document.getElementById('plates-content');
+  el.innerHTML = `
+    <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px; margin-bottom:16px">Plate Calculator</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:12px">Bar Type</div>
+      <div style="display:flex; gap:10px; margin-bottom:20px">
+        <button id="pc-bar-olympic" onclick="pcSetBar('olympic')"
+          style="flex:1; padding:12px; border-radius:8px; border:2px solid var(--accent); background:var(--accent)20; color:var(--accent); font-weight:700; font-size:14px; cursor:pointer">
+          🏋️ Olympic Bar<br><span style="font-size:11px; font-weight:400; color:var(--muted)">+45 lbs to total</span>
+        </button>
+        <button id="pc-bar-none" onclick="pcSetBar('none')"
+          style="flex:1; padding:12px; border-radius:8px; border:2px solid var(--border); background:var(--surface2); color:var(--muted); font-weight:700; font-size:14px; cursor:pointer">
+          🔧 No Bar<br><span style="font-size:11px; font-weight:400">Plate-loaded machine</span>
+        </button>
+      </div>
+
+      <div class="card-title" style="margin-bottom:8px">Total Target Weight (lbs)</div>
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:20px">
+        <button onclick="pcAdjust(-5)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; width:44px; height:44px; font-size:20px; cursor:pointer; flex-shrink:0">−</button>
+        <input id="pc-weight" type="number" value="225" min="0" step="5"
+          oninput="pcCalc()"
+          style="flex:1; text-align:center; font-family:'Bebas Neue',sans-serif; font-size:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--accent); padding:8px; width:100%" />
+        <button onclick="pcAdjust(5)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; width:44px; height:44px; font-size:20px; cursor:pointer; flex-shrink:0">+</button>
+      </div>
+
+      <div id="pc-result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">Quick Reference</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px" id="pc-quick"></div>
+    </div>
+  `;
+
+  // Build quick reference table
+  const quickWeights = [95, 115, 135, 155, 185, 205, 225, 245, 265, 295, 315, 335];
+  let qhtml = '';
+  quickWeights.forEach(w => {
+    const plates = pcGetPlates(w, 'olympic');
+    const label = plates.map(p => `${p.count}×${p.weight}`).join(' + ') || 'Bar only';
+    qhtml += `<div onclick="pcSetWeight(${w})" style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:8px 10px; cursor:pointer">
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--accent)">${w} lbs</div>
+      <div style="font-size:11px; color:var(--muted)">${label}</div>
+    </div>`;
+  });
+  document.getElementById('pc-quick').innerHTML = qhtml;
+
+  window._pcBarType = 'olympic';
+  pcCalc();
+}
+
+function pcSetBar(type) {
+  window._pcBarType = type;
+  const olympicBtn = document.getElementById('pc-bar-olympic');
+  const noneBtn = document.getElementById('pc-bar-none');
+  if (type === 'olympic') {
+    olympicBtn.style.borderColor = 'var(--accent)';
+    olympicBtn.style.background = 'var(--accent)20';
+    olympicBtn.style.color = 'var(--accent)';
+    noneBtn.style.borderColor = 'var(--border)';
+    noneBtn.style.background = 'var(--surface2)';
+    noneBtn.style.color = 'var(--muted)';
+  } else {
+    noneBtn.style.borderColor = 'var(--accent)';
+    noneBtn.style.background = 'var(--accent)20';
+    noneBtn.style.color = 'var(--accent)';
+    olympicBtn.style.borderColor = 'var(--border)';
+    olympicBtn.style.background = 'var(--surface2)';
+    olympicBtn.style.color = 'var(--muted)';
+  }
+  pcCalc();
+}
+
+function pcAdjust(delta) {
+  const input = document.getElementById('pc-weight');
+  if (!input) return;
+  input.value = Math.max(0, (parseFloat(input.value) || 0) + delta);
+  pcCalc();
+}
+
+function pcSetWeight(w) {
+  const input = document.getElementById('pc-weight');
+  if (input) { input.value = w; pcCalc(); }
+}
+
+// Returns array of {weight, count} plate pairs for ONE SIDE
+function pcGetPlates(totalWeight, barType) {
+  const barWeight = barType === 'olympic' ? 45 : 0;
+  const plateSide = (totalWeight - barWeight) / 2;
+  if (plateSide <= 0) return [];
+
+  const PLATE_SIZES = [45, 35, 25, 10, 5, 2.5];
+  let remaining = plateSide;
+  const result = [];
+
+  PLATE_SIZES.forEach(p => {
+    const count = Math.floor(remaining / p);
+    if (count > 0) {
+      result.push({ weight: p, count });
+      remaining -= count * p;
+      remaining = Math.round(remaining * 100) / 100;
+    }
+  });
+
+  return result;
+}
+
+const PLATE_COLORS = {
+  45: '#c0392b',   // red
+  35: '#2980b9',   // blue
+  25: '#f39c12',   // yellow/gold
+  10: '#27ae60',   // green
+  5:  '#7f8c8d',   // grey
+  2.5:'#bdc3c7',   // light grey
+};
+
+function pcCalc() {
+  const input = document.getElementById('pc-weight');
+  const result = document.getElementById('pc-result');
+  if (!input || !result) return;
+
+  const totalWeight = parseFloat(input.value) || 0;
+  const barType = window._pcBarType || 'olympic';
+  const barWeight = barType === 'olympic' ? 45 : 0;
+  const plateSide = (totalWeight - barWeight) / 2;
+
+  if (totalWeight <= 0) { result.innerHTML = ''; return; }
+
+  if (plateSide < 0) {
+    result.innerHTML = `<div style="color:var(--red); font-size:14px; padding:10px 0">Weight is less than the bar (${barWeight} lbs). Add more weight.</div>`;
+    return;
+  }
+
+  const plates = pcGetPlates(totalWeight, barType);
+  const platesPerSide = plates.reduce((s, p) => s + p.count * p.weight, 0);
+  const achievable = barWeight + platesPerSide * 2;
+  const isExact = Math.abs(achievable - totalWeight) < 0.1;
+
+  // Visual bar diagram
+  let barHtml = `<div style="display:flex; align-items:center; justify-content:center; margin:16px 0; flex-wrap:wrap; gap:3px">`;
+  // Left plates (reversed for visual)
+  const reversed = [...plates].reverse();
+  reversed.forEach(p => {
+    for (let i = 0; i < p.count; i++) {
+      const h = Math.min(80, 30 + p.weight);
+      barHtml += `<div style="width:18px; height:${h}px; background:${PLATE_COLORS[p.weight] || '#888'}; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:9px; color:white; font-weight:700; writing-mode:vertical-lr">${p.weight}</div>`;
+    }
+  });
+  // Bar
+  barHtml += `<div style="width:60px; height:14px; background:var(--muted); border-radius:3px; margin:0 2px"></div>`;
+  // Right plates
+  plates.forEach(p => {
+    for (let i = 0; i < p.count; i++) {
+      const h = Math.min(80, 30 + p.weight);
+      barHtml += `<div style="width:18px; height:${h}px; background:${PLATE_COLORS[p.weight] || '#888'}; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:9px; color:white; font-weight:700; writing-mode:vertical-lr">${p.weight}</div>`;
+    }
+  });
+  barHtml += `</div>`;
+
+  // Plate list
+  let listHtml = `<div style="margin-bottom:12px">
+    <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px">Each Side (${plateSide % 1 === 0 ? plateSide : plateSide.toFixed(1)} lbs per side)</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px">`;
+
+  if (plates.length === 0) {
+    listHtml += `<div style="color:var(--muted); font-size:14px">Bar only</div>`;
+  } else {
+    plates.forEach(p => {
+      listHtml += `<div style="background:${PLATE_COLORS[p.weight] || '#888'}25; border:1px solid ${PLATE_COLORS[p.weight] || '#888'}; border-radius:8px; padding:8px 14px; text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:${PLATE_COLORS[p.weight] || 'var(--text)'}; line-height:1">${p.count}×</div>
+        <div style="font-size:13px; font-weight:700; color:var(--text)">${p.weight} lb</div>
+      </div>`;
+    });
+  }
+  listHtml += `</div></div>`;
+
+  // Summary line
+  let summaryHtml = `<div style="padding:10px 12px; background:var(--surface2); border-radius:6px; font-size:13px">`;
+  summaryHtml += `<span style="color:var(--muted)">${barType === 'olympic' ? '45 lb bar' : 'No bar'} + </span>`;
+  summaryHtml += `<span style="color:var(--text); font-weight:600">${platesPerSide} lbs/side</span>`;
+  summaryHtml += ` <span style="color:var(--muted)">= </span>`;
+  summaryHtml += `<span style="color:var(--accent); font-weight:700; font-size:15px">${achievable} lbs total</span>`;
+  if (!isExact) {
+    summaryHtml += ` <span style="color:var(--accent2); font-size:12px">(nearest loadable: ${totalWeight} → ${achievable})</span>`;
+  }
+  summaryHtml += `</div>`;
+
+  result.innerHTML = barHtml + listHtml + summaryHtml;
+}
+
+// ═══════════════════════════════════════════════════════════
+// REST TIMER
+// ═══════════════════════════════════════════════════════════
+
+let restTimerInterval = null;
+let restTimerSeconds = 0;
+let restTimerDefault = 120; // 2 minutes default
+
+function startRestTimer() {
+  // Don't restart if already running
+  if (restTimerInterval) stopRestTimer();
+  restTimerSeconds = restTimerDefault;
+  showRestTimer();
+  restTimerInterval = setInterval(() => {
+    restTimerSeconds--;
+    updateRestTimerDisplay();
+    if (restTimerSeconds <= 0) {
+      stopRestTimer();
+      // Vibrate on supported devices
+      if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+      const display = document.getElementById('rest-timer-display');
+      if (display) {
+        display.textContent = "GO! 🔥";
+        display.style.color = 'var(--accent)';
+      }
+      // Auto-hide after 3 seconds
+      setTimeout(() => hideRestTimer(), 3000);
+    }
+  }, 1000);
+}
+
+function stopRestTimer() {
+  if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
+}
+
+function showRestTimer() {
+  let el = document.getElementById('rest-timer-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'rest-timer-overlay';
+    el.style.cssText = `
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--accent); border-radius: 14px;
+      padding: 14px 20px; z-index: 999; display: flex; align-items: center;
+      gap: 14px; box-shadow: 0 4px 24px rgba(0,0,0,0.6); min-width: 260px;
+    `;
+    el.innerHTML = `
+      <div>
+        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px">Rest Timer</div>
+        <div id="rest-timer-display" style="font-family:'Bebas Neue',sans-serif; font-size:36px; color:var(--green); line-height:1">2:00</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <div style="display:flex; gap:6px">
+          <button onclick="adjustRestTimer(-30)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 10px; font-size:13px; cursor:pointer">−30s</button>
+          <button onclick="adjustRestTimer(30)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 10px; font-size:13px; cursor:pointer">+30s</button>
+          <button onclick="hideRestTimer()" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 10px; font-size:13px; cursor:pointer">✕</button>
+        </div>
+        <div style="display:flex; gap:6px; justify-content:center">
+          <button onclick="setRestTimer(60)" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer">1:00</button>
+          <button onclick="setRestTimer(90)" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer">1:30</button>
+          <button onclick="setRestTimer(120)" style="background:var(--surface2); border:1px solid var(--border); color:var(--accent); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer">2:00</button>
+          <button onclick="setRestTimer(180)" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer">3:00</button>
+          <button onclick="setRestTimer(300)" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer">5:00</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  updateRestTimerDisplay();
+}
+
+function hideRestTimer() {
+  stopRestTimer();
+  const el = document.getElementById('rest-timer-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function updateRestTimerDisplay() {
+  const display = document.getElementById('rest-timer-display');
+  if (!display) return;
+  const m = Math.floor(Math.abs(restTimerSeconds) / 60);
+  const s = Math.abs(restTimerSeconds) % 60;
+  display.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  // Color shifts as time runs low
+  if (restTimerSeconds <= 10) display.style.color = 'var(--accent2)';
+  else if (restTimerSeconds <= 30) display.style.color = 'var(--accent)';
+  else display.style.color = 'var(--green)';
+}
+
+function adjustRestTimer(delta) {
+  restTimerSeconds = Math.max(5, restTimerSeconds + delta);
+  updateRestTimerDisplay();
+}
+
+function setRestTimer(seconds) {
+  stopRestTimer();
+  restTimerDefault = seconds;
+  restTimerSeconds = seconds;
+  restTimerInterval = setInterval(() => {
+    restTimerSeconds--;
+    updateRestTimerDisplay();
+    if (restTimerSeconds <= 0) {
+      stopRestTimer();
+      if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+      const display = document.getElementById('rest-timer-display');
+      if (display) { display.textContent = "GO! 🔥"; display.style.color = 'var(--accent)'; }
+      setTimeout(() => hideRestTimer(), 3000);
+    }
+  }, 1000);
+  updateRestTimerDisplay();
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   updateHeader();
   renderToday();
   renderSettings();
+  restorePending();
 
   const d = loadData();
   if (!d.trainingMax) {
