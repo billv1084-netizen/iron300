@@ -706,6 +706,32 @@
     <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
   </div>
 
+  <div class="card" id="github-sync-card">
+    <div class="card-title">&#9729;&#65039; GitHub Sync</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6">
+      Sync your workout data across all devices via your private GitHub repo. Your token is stored only in this browser and never leaves your device.
+    </p>
+    <div class="form-group">
+      <label class="form-label">GitHub Personal Access Token</label>
+      <input class="form-input" type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" />
+      <div style="font-size:11px; color:var(--muted); margin-top:4px">GitHub &rarr; Settings &rarr; Developer settings &rarr; Personal access tokens (classic). Needs <strong>repo</strong> scope.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">GitHub Username</label>
+      <input class="form-input" type="text" id="gh-user" placeholder="e.g. billv1084-netizen" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Repository Name</label>
+      <input class="form-input" type="text" id="gh-repo" placeholder="e.g. iron300" />
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+      <button class="btn btn-primary" onclick="saveGithubSettings()">Save Sync Settings</button>
+      <button class="btn btn-secondary" onclick="syncFromGithub()">&#8595; Pull from GitHub</button>
+      <button class="btn btn-secondary" onclick="syncToGithub(true)">&#8593; Push to GitHub</button>
+    </div>
+    <div id="sync-status" style="margin-top:12px; font-size:13px; display:none"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">About This Program</div>
     <p style="font-size:14px; color: var(--muted); line-height:1.8">
@@ -884,14 +910,14 @@ function getDayStructure(daysPerWeek) {
         assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
       },
       {
-        label: 'Day 2 — OHP + Lats + Bis',
-        benchFocus: 'ohp',
-        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
-      },
-      {
-        label: 'Day 3 — Volume Bench + Back + Arms',
+        label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
         assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+      },
+      {
+        label: 'Day 3 — OHP + Lats + Bis',
+        benchFocus: 'ohp',
+        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
       },
       {
         label: 'Day 4 — Speed Bench + Back + Arms',
@@ -908,14 +934,14 @@ function getDayStructure(daysPerWeek) {
         assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
       },
       {
-        label: 'Day 2 — OHP + Lats + Bis',
-        benchFocus: 'ohp',
-        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
-      },
-      {
-        label: 'Day 3 — Volume Bench + Back + Arms',
+        label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
         assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+      },
+      {
+        label: 'Day 3 — OHP + Lats + Bis',
+        benchFocus: 'ohp',
+        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
       },
       {
         label: 'Day 4 — Speed Bench + Back + Arms',
@@ -935,8 +961,8 @@ function getDayStructure(daysPerWeek) {
 // POWERBUILD BENCH SYSTEM (from your spreadsheet)
 //
 // Day 1 (Weekend/Heavy): Top Single RPE 7.5–8 + 4×5 back-offs
-// Day 2 (Monday):        OHP 4×5 (bench rest — shoulder strength)
-// Day 3 (Wednesday):     Volume Bench 4×6
+// Day 2 (Monday):        Volume Bench 4×6
+// Day 3 (Wednesday):     OHP 4×5 (bench rest — shoulder strength)
 // Day 4 (Thursday):      Speed Bench 8×3 @ 65%
 //
 // Weekly increment: +2.5 lbs on single & all bench variants
@@ -1837,6 +1863,7 @@ function logWorkout() {
   pendingNotes = '';
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
+  autoSync(); // push to GitHub silently after every logged workout
   renderToday();
 }
 
@@ -2906,6 +2933,205 @@ function setRestTimer(seconds) {
     }
   }, 1000);
   updateRestTimerDisplay();
+}
+
+// ═══════════════════════════════════════════════════════════
+// GITHUB SYNC
+// ═══════════════════════════════════════════════════════════
+
+function getGithubConfig() {
+  return {
+    token: localStorage.getItem('gh_token') || '',
+    user:  localStorage.getItem('gh_user')  || '',
+    repo:  localStorage.getItem('gh_repo')  || '',
+  };
+}
+
+function saveGithubSettings() {
+  const token = document.getElementById('gh-token').value.trim();
+  const user  = document.getElementById('gh-user').value.trim();
+  const repo  = document.getElementById('gh-repo').value.trim();
+  if (!token || !user || !repo) {
+    showSyncStatus('Please fill in all three fields.', 'error'); return;
+  }
+  localStorage.setItem('gh_token', token);
+  localStorage.setItem('gh_user',  user);
+  localStorage.setItem('gh_repo',  repo);
+  showSyncStatus('Sync settings saved. Testing connection...', 'info');
+  testGithubConnection();
+}
+
+async function testGithubConnection() {
+  const { token, user, repo } = getGithubConfig();
+  try {
+    const res = await fetch('https://api.github.com/repos/' + user + '/' + repo, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (res.ok) {
+      showSyncStatus('&#10003; Connected to ' + user + '/' + repo + ' successfully!', 'success');
+    } else {
+      showSyncStatus('&#10007; Could not connect. Check your token and repo name.', 'error');
+    }
+  } catch(e) {
+    showSyncStatus('&#10007; Network error: ' + e.message, 'error');
+  }
+}
+
+// Push local data up to GitHub as iron300_data.json
+async function syncToGithub(showFeedback) {
+  const { token, user, repo } = getGithubConfig();
+  if (!token || !user || !repo) {
+    if (showFeedback) showSyncStatus('Set up GitHub sync in Settings first.', 'error');
+    return false;
+  }
+  try {
+    const data = localStorage.getItem('iron300_data');
+    if (!data) { if (showFeedback) showSyncStatus('No local data to push.', 'error'); return false; }
+
+    const content = btoa(unescape(encodeURIComponent(data)));
+    const filePath = 'iron300_data.json';
+    const apiUrl = 'https://api.github.com/repos/' + user + '/' + repo + '/contents/' + filePath;
+
+    // Get current SHA if file exists (required for updates)
+    let sha = null;
+    const getRes = await fetch(apiUrl, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (getRes.ok) {
+      const existing = await getRes.json();
+      sha = existing.sha;
+    }
+
+    const body = {
+      message: 'iron300 sync ' + new Date().toISOString().slice(0,16).replace('T',' '),
+      content: content,
+    };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'token ' + token,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (putRes.ok) {
+      localStorage.setItem('gh_last_sync', new Date().toISOString());
+      if (showFeedback) showSyncStatus('&#8593; Pushed to GitHub successfully at ' + new Date().toLocaleTimeString(), 'success');
+      updateSyncBadge();
+      return true;
+    } else {
+      const err = await putRes.json();
+      if (showFeedback) showSyncStatus('&#10007; Push failed: ' + (err.message || putRes.status), 'error');
+      return false;
+    }
+  } catch(e) {
+    if (showFeedback) showSyncStatus('&#10007; Error: ' + e.message, 'error');
+    return false;
+  }
+}
+
+// Pull data from GitHub and merge into local
+async function syncFromGithub() {
+  const { token, user, repo } = getGithubConfig();
+  if (!token || !user || !repo) {
+    showSyncStatus('Set up GitHub sync in Settings first.', 'error'); return;
+  }
+  showSyncStatus('Pulling from GitHub...', 'info');
+  try {
+    const apiUrl = 'https://api.github.com/repos/' + user + '/' + repo + '/contents/iron300_data.json';
+    const res = await fetch(apiUrl, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        showSyncStatus('No data file found on GitHub yet. Push first from your phone.', 'info');
+      } else {
+        showSyncStatus('&#10007; Pull failed: ' + res.status, 'error');
+      }
+      return;
+    }
+    const file = await res.json();
+    const decoded = decodeURIComponent(escape(atob(file.content.replace(/\n/g,''))));
+    // Validate it's real iron300 data
+    const parsed = JSON.parse(decoded);
+    if (!parsed.workoutLogs || !parsed.settings) {
+      showSyncStatus('&#10007; Data file on GitHub doesn\'t look like iron300 data.', 'error');
+      return;
+    }
+    localStorage.setItem('iron300_data', decoded);
+    localStorage.setItem('gh_last_sync', new Date().toISOString());
+    showSyncStatus('&#8595; Pulled from GitHub successfully! Reloading...', 'success');
+    updateSyncBadge();
+    setTimeout(() => { pendingStatuses = {}; renderToday(); renderSettings(); }, 1200);
+  } catch(e) {
+    showSyncStatus('&#10007; Error: ' + e.message, 'error');
+  }
+}
+
+// Auto-sync to GitHub after every workout log (silent, no feedback)
+async function autoSync() {
+  const { token } = getGithubConfig();
+  if (!token) return; // not configured, skip silently
+  await syncToGithub(false);
+}
+
+function showSyncStatus(msg, type) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const colors = { success: 'var(--green)', error: 'var(--red)', info: 'var(--muted)' };
+  el.style.display = 'block';
+  el.style.color = colors[type] || 'var(--text)';
+  el.innerHTML = msg;
+}
+
+function updateSyncBadge() {
+  const last = localStorage.getItem('gh_last_sync');
+  if (!last) return;
+  const el = document.getElementById('sync-last');
+  if (el) el.textContent = 'Last synced: ' + new Date(last).toLocaleString();
+}
+
+function renderSettings() {
+  // Populate GitHub fields if already configured
+  const token = localStorage.getItem('gh_token') || '';
+  const user  = localStorage.getItem('gh_user')  || '';
+  const repo  = localStorage.getItem('gh_repo')  || '';
+  const ghTokenEl = document.getElementById('gh-token');
+  const ghUserEl  = document.getElementById('gh-user');
+  const ghRepoEl  = document.getElementById('gh-repo');
+  if (ghTokenEl && token) ghTokenEl.value = token;
+  if (ghUserEl  && user)  ghUserEl.value  = user;
+  if (ghRepoEl  && repo)  ghRepoEl.value  = repo;
+
+  const last = localStorage.getItem('gh_last_sync');
+  if (last) {
+    const statusEl = document.getElementById('sync-status');
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'var(--muted)';
+      statusEl.textContent = 'Last synced: ' + new Date(last).toLocaleString();
+    }
+  }
+
+  const d = loadData();
+  const rmEl   = document.getElementById('set-1rm');
+  const goalEl = document.getElementById('set-goal');
+  const eqEl   = document.getElementById('set-equipment');
+  const daysEl = document.getElementById('set-days');
+  const ohpEl  = document.getElementById('set-ohp');
+  const barEl  = document.getElementById('set-bar');
+  const platEl = document.getElementById('set-plate');
+  if (d.estimated1RM && rmEl)   rmEl.value   = d.estimated1RM;
+  if (d.settings.goal && goalEl) goalEl.value = d.settings.goal;
+  if (eqEl)   eqEl.value   = d.settings.equipment   || 'barbell';
+  if (daysEl) daysEl.value = d.settings.daysPerWeek || 4;
+  if (d.ohpWeight && ohpEl) ohpEl.value = d.ohpWeight;
+  if (barEl)  barEl.value  = d.settings.barWeight    || 45;
+  if (platEl) platEl.value = d.settings.smallestPlate || 2.5;
 }
 
 window.addEventListener('DOMContentLoaded', () => {
