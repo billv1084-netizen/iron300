@@ -806,11 +806,10 @@ function roundToDumbbell(weight, increment) {
 }
 
 function roundWeight(weight, group, barWeight, smallestPlate) {
-  // Dumbbell exercises round to nearest 2.5 lbs; barbell exercises use plate math
+  // Shoulders and biceps use dumbbell-style rounding (nearest 2.5)
+  // EZ Bar curls and cable exercises use cable stack rounding (nearest 2.5 also fine)
+  // Back, triceps, chest use plate math
   const dbGroups = ['shoulders', 'biceps'];
-  const dbExercises = ['Dumbbell Curl', 'Dumbbell Row', 'Hammer Curl', 'Incline DB Curl',
-                       'Lateral Raise', 'Rear Delt Fly', 'Face Pull', 'Cable Fly',
-                       'Hammer Strength Incline'];
   return dbGroups.includes(group)
     ? roundToDumbbell(weight, 2.5)
     : roundToPlate(weight, barWeight, smallestPlate);
@@ -829,15 +828,16 @@ const ASSISTANCE_LIBRARY = {
   // Back
   'Seated Chest-Supported Row': { group: 'back',     sets: 4, repRange: [6,10],  startWeight: 90,  failProtocol: 'strength'    },
   'Lat Pulldown':               { group: 'back',     sets: 4, repRange: [8,12],  startWeight: 120, failProtocol: 'hypertrophy' },
-  'Seated Cable Row':           { group: 'back',     sets: 4, repRange: [8,12],  startWeight: 110, failProtocol: 'hypertrophy' },
+  'Close Grip Pulldown':        { group: 'back',     sets: 4, repRange: [8,12],  startWeight: 110, failProtocol: 'hypertrophy' },
   'Dumbbell Row':               { group: 'back',     sets: 4, repRange: [10,12], startWeight: 50,  failProtocol: 'hypertrophy' },
   // Shoulders
   'Lateral Raise':              { group: 'shoulders',sets: 4, repRange: [10,15], startWeight: 20,  failProtocol: 'pump'        },
+  'Machine Lateral Raise':      { group: 'shoulders',sets: 4, repRange: [10,15], startWeight: 50,  failProtocol: 'pump'        },
   'Rear Delt Fly':              { group: 'shoulders',sets: 4, repRange: [12,15], startWeight: 20,  failProtocol: 'pump'        },
   'Face Pull':                  { group: 'shoulders',sets: 4, repRange: [12,15], startWeight: 50,  failProtocol: 'pump'        },
   // Biceps
-  'EZ Bar Curl':                { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 65,  failProtocol: 'hypertrophy' },
-  'Dumbbell Curl':              { group: 'biceps',   sets: 4, repRange: [8,15],  startWeight: 25,  failProtocol: 'hypertrophy' },
+  'EZ Bar Curl (Inside Grip)':  { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 65,  failProtocol: 'hypertrophy' },
+  'EZ Bar Curl (Outside Grip)': { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 65,  failProtocol: 'hypertrophy' },
   'Hammer Curl':                { group: 'biceps',   sets: 4, repRange: [10,15], startWeight: 30,  failProtocol: 'hypertrophy' },
   'Incline DB Curl':            { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 20,  failProtocol: 'hypertrophy' },
   'Preacher Curl':              { group: 'biceps',   sets: 4, repRange: [8,12],  startWeight: 50,  failProtocol: 'hypertrophy' },
@@ -907,17 +907,17 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
+        assistance: ['Seated Chest-Supported Row','Hammer Strength Incline','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
       },
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+        assistance: ['Close Grip Pulldown','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
       },
       {
         label: 'Day 3 — OHP + Lats + Bis',
         benchFocus: 'ohp',
-        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
+        assistance: ['Lat Pulldown','Machine Lateral Raise','EZ Bar Curl (Outside Grip)','Tricep Pushdown']
       },
       {
         label: 'Day 4 — Speed Bench + Back + Arms',
@@ -1217,7 +1217,16 @@ function renderToday() {
   const week = d.currentWeek;
   const dayIdx = d.currentDay - 1;
   const structure = getDayStructure(d.settings.daysPerWeek);
-  const dayDef = structure[dayIdx % structure.length];
+
+  // Check for OHP swap override — shows OHP today instead of Volume
+  const swapOverride = getSwapOverride();
+  let dayDef;
+  if (swapOverride) {
+    // Show OHP day content but we're still on the same currentDay counter
+    dayDef = structure[(swapOverride.swappedWith - 1) % structure.length];
+  } else {
+    dayDef = structure[dayIdx % structure.length];
+  }
 
   // Check if today is already logged
   const todayLog = d.workoutLogs.find(l => l.week === week && l.day === d.currentDay);
@@ -1228,8 +1237,9 @@ function renderToday() {
   let html = `
     <div class="day-header">
       <div>
-        <div class="day-title">${dayDef.label}</div>
+        <div class="day-title">${swapOverride ? 'OHP Day (Swapped)' : dayDef.label}</div>
         <div style="color:var(--muted); font-size:13px">Week ${week} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
+        ${swapOverride ? '<div style="font-size:11px; color:var(--accent2); margin-top:2px">⇄ Volume Bench moved to next session</div>' : ''}
       </div>
       <div style="display:flex; gap:8px; align-items:center">
         ${week % 4 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
@@ -1492,6 +1502,7 @@ function renderToday() {
       <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap">
         <button class="btn btn-primary" onclick="logWorkout()">✓ Log Workout & Progress</button>
         <button class="btn btn-secondary" onclick="skipWorkout()">Skip Today</button>
+        ${dayDef.benchFocus === 'volume' ? '<button class="btn btn-secondary" onclick="swapOHPDay()" style="border-color:var(--accent2); color:var(--accent2)">⇄ Do OHP Today Instead</button>' : ''}
       </div>`;
   } else {
     html += `<div style="margin-top:20px">
@@ -1863,6 +1874,7 @@ function logWorkout() {
   pendingNotes = '';
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
+  clearSwapOverride(); // clear any OHP swap after logging
   autoSync(); // push to GitHub silently after every logged workout
   renderToday();
 }
@@ -2820,6 +2832,58 @@ function pcCalc() {
   summaryHtml += `</div>`;
 
   result.innerHTML = barHtml + listHtml + summaryHtml;
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// OHP DAY SWAP
+// ═══════════════════════════════════════════════════════════
+// Swaps Volume Bench and OHP for this week only.
+// Stores a flag in localStorage so after OHP today,
+// the app shows Volume Bench next (before Speed Bench).
+
+function swapOHPDay() {
+  const d = loadData();
+  const structure = getDayStructure(d.settings.daysPerWeek);
+  const currentIdx = d.currentDay - 1;
+  const currentFocus = structure[currentIdx % structure.length].benchFocus;
+
+  if (currentFocus !== 'volume') return; // safety check
+
+  // Find the OHP day index
+  const ohpIdx = structure.findIndex(day => day.benchFocus === 'ohp');
+  if (ohpIdx === -1) return;
+
+  // Store the swap so renderToday knows to show OHP today
+  // and Volume next time around
+  localStorage.setItem('iron300_day_swap', JSON.stringify({
+    week: d.currentWeek,
+    originalDay: d.currentDay,
+    swappedWith: ohpIdx + 1
+  }));
+
+  pendingStatuses = {};
+  pendingNotes = '';
+  renderToday();
+}
+
+function getSwapOverride() {
+  try {
+    const swap = JSON.parse(localStorage.getItem('iron300_day_swap'));
+    if (!swap) return null;
+    const d = loadData();
+    // Only valid for current week and current day
+    if (swap.week === d.currentWeek && swap.originalDay === d.currentDay) {
+      return swap;
+    }
+    // Stale — clear it
+    localStorage.removeItem('iron300_day_swap');
+    return null;
+  } catch(e) { return null; }
+}
+
+function clearSwapOverride() {
+  localStorage.removeItem('iron300_day_swap');
 }
 
 // ═══════════════════════════════════════════════════════════
