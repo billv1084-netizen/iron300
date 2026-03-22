@@ -1441,11 +1441,14 @@ function renderToday() {
   }
 
   // ASSISTANCE EXERCISES
+  const prevWeekLog = d.workoutLogs.find(l => l.week === week - 1 && l.day === d.currentDay);
+
   dayDef.assistance.forEach((exName, exIdx) => {
     const exDef = ASSISTANCE_LIBRARY[exName];
     if (!exDef) return;
     const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
     const loggedEx = todayLog?.exercises?.find(e => e.name === exName);
+    const prevEx = prevWeekLog?.exercises?.find(e => e.name === exName);
 
     html += `<div class="exercise-block">
       <div class="exercise-header">
@@ -1476,6 +1479,32 @@ function renderToday() {
       const statusClass = loggedSet ? (isSkipped ? '' : loggedSet.fail ? 'fail' : 'done') : '';
       const statusText = loggedSet ? (isSkipped ? 'SKIP' : loggedSet.fail ? 'FAIL' : 'DONE') : '—';
 
+      const prevSet = prevEx?.sets?.[si];
+      const currentReps = loggedSet ? loggedSet.reps : aw.repTarget;
+      const currentWeight = loggedSet ? loggedSet.weight : aw.weight;
+      let prevRowHtml = '';
+      if (prevSet && !prevSet.skipped) {
+        const repDiff = currentReps - prevSet.reps;
+        const wtDiff = currentWeight - prevSet.weight;
+        let deltaHtml = '';
+        if (wtDiff > 0) {
+          deltaHtml = `<span style="color:var(--green); margin-left:6px; font-size:11px">+${wtDiff} lbs</span>`;
+        } else if (wtDiff < 0) {
+          deltaHtml = `<span style="color:var(--red); margin-left:6px; font-size:11px">${wtDiff} lbs</span>`;
+        } else if (repDiff > 0) {
+          deltaHtml = `<span style="color:var(--green); margin-left:6px; font-size:11px">+${repDiff} rep${repDiff !== 1 ? 's' : ''}</span>`;
+        } else if (repDiff < 0) {
+          deltaHtml = `<span style="color:var(--red); margin-left:6px; font-size:11px">${repDiff} rep${Math.abs(repDiff) !== 1 ? 's' : ''}</span>`;
+        } else {
+          deltaHtml = `<span style="color:var(--muted); margin-left:6px; font-size:11px">same</span>`;
+        }
+        prevRowHtml = `<div style="grid-column:1/-1; padding: 2px 0 6px 40px; border-bottom:1px solid var(--border)">
+          <span style="font-size:11px; color:var(--muted)">Last week: </span>
+          <span style="font-size:11px; color:var(--text-secondary)">${prevSet.weight} lbs × ${prevSet.reps}</span>
+          ${deltaHtml}
+        </div>`;
+      }
+
       html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
         <div class="set-num">S${si+1}</div>
         <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : aw.weight}" ${todayLog?'readonly':''} /></div>
@@ -1483,7 +1512,8 @@ function renderToday() {
         <button class="set-status-btn ${statusClass}" id="ex-${exIdx}-s-${si}" onclick="toggleAssistStatus(${exIdx},${si})" ${todayLog?'disabled':''} style="${isSkipped?'opacity:0.4':''}">
           ${statusText}
         </button>
-      </div>`;
+      </div>
+      ${prevRowHtml}`;
     }
 
     html += `</div></div>`;
@@ -1814,20 +1844,39 @@ function logWorkout() {
       d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
 
     } else if (anyFail) {
-      // Failure — apply protocol regardless of what weight was used
-      const newW = protocol.newWeight(aw.weight);
-      const newR = protocol.newReps(aw.repTarget, exDef.repRange);
-      d.assistanceWeights[exName] = { weight: newW, repTarget: newR };
-      failGuidance.push({
-        name: exName,
-        group: exDef.group,
-        protocol: exDef.failProtocol,
-        instruction: protocol.getInstruction(aw.weight, exDef.repRange),
-        newWeight: newW,
-        newReps: newR,
-      });
+      // Track consecutive fail sessions
+      if (!d.failStreak[exName]) d.failStreak[exName] = 0;
+      d.failStreak[exName]++;
+
+      if (d.failStreak[exName] >= 2) {
+        // Two sessions in a row — apply the protocol penalty
+        const newW = protocol.newWeight(aw.weight);
+        const newR = protocol.newReps(aw.repTarget, exDef.repRange);
+        d.assistanceWeights[exName] = { weight: newW, repTarget: newR };
+        d.failStreak[exName] = 0;
+        failGuidance.push({
+          name: exName,
+          group: exDef.group,
+          protocol: exDef.failProtocol,
+          instruction: protocol.getInstruction(aw.weight, exDef.repRange),
+          newWeight: newW,
+          newReps: newR,
+        });
+      } else {
+        // First fail — hold weight and reps, try again next session
+        d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
+        failGuidance.push({
+          name: exName,
+          group: exDef.group,
+          protocol: exDef.failProtocol,
+          instruction: `Hold at <strong>${aw.weight} lbs × ${aw.repTarget} reps</strong> — one missed set isn't a setback. Come back next session and attack it fresh.`,
+          newWeight: aw.weight,
+          newReps: aw.repTarget,
+        });
+      }
 
     } else if (allDone && actualWeights.length > 0) {
+      d.failStreak[exName] = 0; // clear streak on clean session
       const actualMax = Math.max(...actualWeights);
       const avgReps = totalReps / exDef.sets;
 
@@ -1837,18 +1886,27 @@ function logWorkout() {
           weight: roundWeight(actualMax, exDef.group, barWeight, smallestPlate),
           repTarget: exDef.repRange[0],
         };
-      } else if (avgReps >= exDef.repRange[1]) {
-        // Hit top of rep range — increase weight
-        const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
-        d.assistanceWeights[exName] = {
-          weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
-          repTarget: exDef.repRange[0],
-        };
+      } else if (avgReps >= aw.repTarget) {
+        // Hit or exceeded the current rep target on all sets
+        if (aw.repTarget >= exDef.repRange[1]) {
+          // At top of rep range — increase weight, reset reps to bottom
+          const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
+          d.assistanceWeights[exName] = {
+            weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
+            repTarget: exDef.repRange[0],
+          };
+        } else {
+          // Below top of range — add 1 rep target for next session
+          d.assistanceWeights[exName] = {
+            weight: aw.weight,
+            repTarget: aw.repTarget + 1,
+          };
+        }
       } else {
-        // Completed all sets below top of range — add 1 rep to target
+        // Didn't hit rep target — hold weight and reps
         d.assistanceWeights[exName] = {
           weight: aw.weight,
-          repTarget: Math.min(exDef.repRange[1], aw.repTarget + 1),
+          repTarget: aw.repTarget,
         };
       }
 
