@@ -1676,7 +1676,10 @@ function logWorkout() {
   const week = d.currentWeek;
   const dayIdx = d.currentDay - 1;
   const structure = getDayStructure(d.settings.daysPerWeek);
-  const dayDef = structure[dayIdx % structure.length];
+  const swapOverride = getSwapOverride();
+  const dayDef = swapOverride
+    ? structure[(swapOverride.swappedWith - 1) % structure.length]
+    : structure[dayIdx % structure.length];
   const barWeight = d.settings.barWeight;
   const smallestPlate = d.settings.smallestPlate;
 
