@@ -869,9 +869,11 @@ function pct(trainingMax, p, barWeight, smallestPlate) {
 }
 
 // RPE to 1RM percentage mapping
+// Percentages calibrated for a top single (not multi-rep sets)
+// RPE 8 on a single = ~94% of 1RM (2 singles left in tank)
 const RPE_PERCENTAGES = {
-  6: 0.78, 6.5: 0.80, 7: 0.83, 7.5: 0.855,
-  8: 0.89, 8.5: 0.915, 9: 0.94, 9.5: 0.97, 10: 1.00
+  6: 0.88, 6.5: 0.905, 7: 0.91, 7.5: 0.925,
+  8: 0.94, 8.5: 0.955, 9: 0.97, 9.5: 0.985, 10: 1.00
 };
 
 // Calculate implied 1RM from weight and RPE
@@ -1279,6 +1281,98 @@ function showPage(name) {
 // RENDER TODAY
 // ═══════════════════════════════════════════════════════════
 
+function renderDaySelector(el, d, week, structure) {
+  const isDeload = (week % 4 === 0);
+  const focusLabels = { heavy: 'Heavy Bench', volume: 'Volume Bench', speed: 'Speed Bench', ohp: 'OHP' };
+  const focusDescriptions = {
+    heavy: 'Top single + 4×5 back-offs',
+    volume: '4×6 at moderate load',
+    speed: '8×3 explosive reps',
+    ohp: 'Overhead press + lats'
+  };
+
+  let html = `
+    <div style="margin-bottom:8px">
+      <div style="font-size:22px; font-weight:700; color:var(--text); margin-bottom:4px">What are you training today?</div>
+      <div style="color:var(--muted); font-size:13px">Week ${week} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}${isDeload ? ' · <span style="color:var(--accent2)">Deload Week</span>' : ''}</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px">`;
+
+  structure.forEach((day, idx) => {
+    const dayNum = idx + 1;
+    const focusKey = day.benchFocus;
+    const focusLabel = focusLabels[focusKey] || focusKey;
+    const focusDesc = focusDescriptions[focusKey] || '';
+    const exCount = day.assistance ? day.assistance.length : 0;
+    const shortTitle = day.label.split('—')[1]?.trim() || day.label;
+
+    // Check if already done this week
+    const alreadyDone = d.workoutLogs.some(l => l.week === week && l.day === dayNum);
+    const doneTag = alreadyDone
+      ? `<span style="font-size:11px; color:var(--green); margin-left:8px; border:1px solid var(--green); padding:1px 6px; border-radius:10px">✓ Done</span>`
+      : '';
+
+    html += `
+      <button onclick="startWorkout(${dayNum})" style="
+        display:flex; align-items:center; justify-content:space-between;
+        background:var(--surface2); border:1px solid var(--border);
+        border-radius:8px; padding:16px 18px; cursor:pointer; text-align:left;
+        transition: border-color 0.15s, background 0.15s; width:100%;
+      " onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div>
+          <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:3px">
+            Day ${dayNum}${doneTag}
+          </div>
+          <div style="font-size:13px; color:var(--accent); font-weight:600; margin-bottom:2px">${focusLabel} · ${shortTitle}</div>
+          <div style="font-size:12px; color:var(--muted)">${focusDesc}${exCount ? ' · ' + exCount + ' assistance exercises' : ''}</div>
+        </div>
+        <div style="color:var(--muted); font-size:20px; margin-left:12px">›</div>
+      </button>`;
+  });
+
+  html += `</div>`;
+
+  // If all days for this week are logged, show "Start Next Week" button
+  const totalDays = structure.length;
+  const allDone = structure.every((_, idx) =>
+    d.workoutLogs.some(l => l.week === week && l.day === idx + 1)
+  );
+  if (allDone) {
+    html += `
+      <div style="margin-top:24px; padding:16px; background:var(--surface2); border:1px solid var(--green); border-radius:8px; text-align:center">
+        <div style="color:var(--green); font-weight:700; font-size:15px; margin-bottom:6px">✓ Week ${week} Complete!</div>
+        <div style="color:var(--muted); font-size:13px; margin-bottom:14px">All ${totalDays} workouts logged. Ready for Week ${week + 1}?</div>
+        <button class="btn btn-primary" onclick="advanceDay()">Start Week ${week + 1} →</button>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function startWorkout(dayNum) {
+  pendingSelectedDay = dayNum;
+  // Save immediately so a page refresh remembers the selection
+  localStorage.setItem('iron300_pending', JSON.stringify({
+    statuses: {}, efforts: {}, notes: '', selectedDay: dayNum
+  }));
+  renderToday();
+}
+
+function cancelWorkout() {
+  // If any sets have been marked, confirm before discarding
+  const hasProgress = Object.keys(pendingStatuses).length > 0;
+  if (hasProgress) {
+    if (!confirm('Go back to day selection? Your in-progress sets will be lost.')) return;
+  }
+  pendingStatuses = {};
+  pendingNotes = '';
+  pendingEfforts = {};
+  pendingSelectedDay = null;
+  localStorage.removeItem('iron300_pending');
+  stopRestTimer();
+  renderToday();
+}
+
 function renderToday() {
   const d = loadData();
   const el = document.getElementById('today-content');
@@ -1305,21 +1399,19 @@ function renderToday() {
   }
 
   const week = d.currentWeek;
-  const dayIdx = d.currentDay - 1;
   const structure = getDayStructure(d.settings.daysPerWeek);
 
-  // Check for OHP swap override — shows OHP today instead of Volume
-  const swapOverride = getSwapOverride();
-  let dayDef;
-  if (swapOverride) {
-    // Show OHP day content but we're still on the same currentDay counter
-    dayDef = structure[(swapOverride.swappedWith - 1) % structure.length];
-  } else {
-    dayDef = structure[dayIdx % structure.length];
+  // If no workout is actively selected, show the day selector
+  if (!pendingSelectedDay) {
+    renderDaySelector(el, d, week, structure);
+    return;
   }
 
-  // Check if today is already logged
-  const todayLog = d.workoutLogs.find(l => l.week === week && l.day === d.currentDay);
+  // A day has been chosen — show that day's workout
+  const dayDef = structure[(pendingSelectedDay - 1) % structure.length];
+
+  // Check if this day was already logged this week (shouldn't happen in normal flow, but handle it)
+  const todayLog = d.workoutLogs.find(l => l.week === week && l.day === pendingSelectedDay);
 
   const focusLabels = { heavy: 'HEAVY DAY', volume: 'VOLUME DAY', speed: 'SPEED DAY', ohp: 'OHP DAY' };
   const focusBadge = focusLabels[dayDef.benchFocus] || 'ACCESSORY';
@@ -1327,36 +1419,14 @@ function renderToday() {
   let html = `
     <div class="day-header">
       <div>
-        <div class="day-title">${swapOverride ? 'OHP Day (Swapped)' : dayDef.label}</div>
+        <div class="day-title">${dayDef.label}</div>
         <div style="color:var(--muted); font-size:13px">Week ${week} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
-        ${swapOverride ? '<div style="font-size:11px; color:var(--accent2); margin-top:2px">⇄ Volume Bench moved to next session</div>' : ''}
       </div>
       <div style="display:flex; gap:8px; align-items:center">
+        <button onclick="cancelWorkout()" style="background:transparent; border:none; color:var(--muted); font-size:12px; cursor:pointer; padding:4px 8px; border-radius:4px; border:1px solid var(--border)">← Change</button>
         ${week % 4 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
       </div>
     </div>`;
-
-  // Day queue UI for reordering
-  if (!todayLog && d.dayQueue && d.dayQueue.length > 1) {
-    html += `<div style="margin-bottom:12px; padding:12px; background:var(--surface2); border-radius:6px; border:1px solid var(--border)">
-      <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px">Upcoming Days</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap">`;
-
-    d.dayQueue.forEach((dayNum, idx) => {
-      const dayDayDef = structure[dayNum - 1];
-      const isToday = idx === 0;
-      const dayLabel = dayDayDef.label.split('—')[0].trim() || ('Day ' + dayNum);
-      const color = isToday ? 'var(--accent)' : 'var(--border)';
-      const textColor = isToday ? 'var(--accent)' : 'var(--text)';
-
-      html += `<div style="display:flex; align-items:center; gap:4px; padding:6px 10px; background:var(--surface); border:1px solid ${color}; border-radius:4px">
-        <span style="font-size:12px; color:${textColor}; font-weight:600">${isToday ? '◆ ' : ''}${dayLabel}</span>
-        ${idx > 0 ? `<button class="btn" style="padding:2px 6px; font-size:10px; background:transparent; color:var(--muted); border:none; cursor:pointer; hover:color:var(--accent)" onclick="moveDayUp(${idx})" title="Move up">↑</button>` : ''}
-      </div>`;
-    });
-
-    html += `</div></div>`;
-  }
 
   if (todayLog) {
     html += `<div class="alert alert-success">✓ Workout logged! <a href="#" onclick="showPage('history')" style="color:var(--green)">View in History</a> — <a href="#" onclick="unlockToday()" style="color:var(--green)">Edit</a></div>`;
@@ -1553,7 +1623,7 @@ function renderToday() {
   }
 
   // ASSISTANCE EXERCISES
-  const prevWeekLog = d.workoutLogs.find(l => l.week === week - 1 && l.day === d.currentDay);
+  const prevWeekLog = d.workoutLogs.find(l => l.week === week - 1 && l.day === pendingSelectedDay);
 
   dayDef.assistance.forEach((exName, exIdx) => {
     const exDef = ASSISTANCE_LIBRARY[exName];
@@ -1657,7 +1727,7 @@ function renderToday() {
       </div>`;
   } else {
     html += `<div style="margin-top:20px">
-      <button class="btn btn-primary" onclick="advanceDay()">Next Workout →</button>
+      <button class="btn btn-secondary" onclick="cancelWorkout()">← Back to Selector</button>
     </div>`;
   }
 
@@ -1669,6 +1739,7 @@ function renderToday() {
 let pendingStatuses = {}; // 'bench-0': {done:bool, fail:bool}
 let pendingNotes = '';    // workout notes before logging
 let pendingEfforts = {};  // 'exIdx-setIdx': 'easy'|'ok'|'hard'
+let pendingSelectedDay = null; // which day the user chose to do today (1-indexed)
 
 function setEffort(exIdx, setIdx, effort) {
   const key = exIdx + '-' + setIdx;
@@ -1680,7 +1751,7 @@ function setEffort(exIdx, setIdx, effort) {
       b.className = 'effort-btn' + (b.dataset.effort === effort ? ' selected-' + effort : '');
     });
   }
-  localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, notes: pendingNotes }));
+  localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, notes: pendingNotes, selectedDay: pendingSelectedDay }));
 }
 
 function moveDayUp(index) {
@@ -1689,8 +1760,10 @@ function moveDayUp(index) {
   if (index <= 0 || index >= d.dayQueue.length) return;
   // Swap with previous day
   [d.dayQueue[index], d.dayQueue[index-1]] = [d.dayQueue[index-1], d.dayQueue[index]];
+  // currentDay always tracks the front of the queue
+  d.currentDay = d.dayQueue[0];
   saveData(d);
-  renderToday(); // Re-render to show updated queue
+  renderToday(); // Re-render to show updated queue and workout
 }
 
 function highlightRPE(setIdx, rpe) {
@@ -1729,20 +1802,39 @@ function toggleAssistStatus(exIdx, si) {
   if (!pendingStatuses[key]) pendingStatuses[key] = { done: false, fail: false, skipped: false };
   const s = pendingStatuses[key];
   const btn = document.getElementById(`ex-${exIdx}-s-${si}`);
+  const setRow = document.getElementById(`ex-row-${exIdx}-${si}`);
 
   if (!s.done && !s.fail) {
     s.done = true; s.fail = false; s.skipped = false;
     btn.className = 'set-status-btn done';
     btn.textContent = 'DONE';
     startRestTimer();
+    // Dynamically insert effort row after the set row
+    if (setRow && !document.getElementById(`effort-${exIdx}-${si}`)) {
+      const effortRow = document.createElement('div');
+      effortRow.className = 'effort-row';
+      effortRow.id = `effort-${exIdx}-${si}`;
+      effortRow.innerHTML = `
+        <button class="effort-btn" data-effort="easy" onclick="setEffort('${exIdx}','${si}','easy')">Easy</button>
+        <button class="effort-btn selected-ok" data-effort="ok" onclick="setEffort('${exIdx}','${si}','ok')">OK</button>
+        <button class="effort-btn" data-effort="hard" onclick="setEffort('${exIdx}','${si}','hard')">Hard</button>
+      `;
+      setRow.insertAdjacentElement('afterend', effortRow);
+    } else if (document.getElementById(`effort-${exIdx}-${si}`)) {
+      document.getElementById(`effort-${exIdx}-${si}`).style.display = 'flex';
+    }
   } else if (s.done) {
     s.done = false; s.fail = true; s.skipped = false;
     btn.className = 'set-status-btn fail';
     btn.textContent = 'FAIL';
+    const effortRow = document.getElementById(`effort-${exIdx}-${si}`);
+    if (effortRow) effortRow.style.display = 'none';
   } else {
     s.done = false; s.fail = false; s.skipped = false;
     btn.className = 'set-status-btn';
     btn.textContent = '—';
+    const effortRow = document.getElementById(`effort-${exIdx}-${si}`);
+    if (effortRow) effortRow.style.display = 'none';
   }
   autoSavePending();
 }
@@ -1757,7 +1849,7 @@ function autoSavePending() {
     document.querySelectorAll('[id^="bench-w-"],[id^="bench-r-"],[id^="ohp-w-"],[id^="ohp-r-"],[id^="ex-"]').forEach(el => {
       if (el.tagName === 'INPUT') inputs[el.id] = el.value;
     });
-    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, inputs, notes: pendingNotes }));
+    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, inputs, notes: pendingNotes, selectedDay: pendingSelectedDay }));
   } catch(e) {}
 }
 
@@ -1768,6 +1860,7 @@ function restorePending() {
     if (!saved) return;
     pendingStatuses = saved.statuses || {};
     pendingNotes = saved.notes || '';
+    pendingSelectedDay = saved.selectedDay || null;
     pendingEfforts = saved.efforts || {};
     setTimeout(() => {
       Object.entries(pendingStatuses).forEach(([key, s]) => {
@@ -1847,12 +1940,8 @@ function analyzeEffort(sets) {
 function logWorkout() {
   const d = loadData();
   const week = d.currentWeek;
-  const dayIdx = d.currentDay - 1;
   const structure = getDayStructure(d.settings.daysPerWeek);
-  const swapOverride = getSwapOverride();
-  const dayDef = swapOverride
-    ? structure[(swapOverride.swappedWith - 1) % structure.length]
-    : structure[dayIdx % structure.length];
+  const dayDef = structure[(pendingSelectedDay - 1) % structure.length];
   const barWeight = d.settings.barWeight;
   const smallestPlate = d.settings.smallestPlate;
 
@@ -2153,7 +2242,7 @@ function logWorkout() {
 
   d.workoutLogs.push({
     week: d.currentWeek,
-    day: d.currentDay,
+    day: pendingSelectedDay,
     date: new Date().toISOString(),
     exercises,
     failGuidance,
@@ -2162,6 +2251,8 @@ function logWorkout() {
   saveData(d);
   pendingStatuses = {};
   pendingNotes = '';
+  pendingEfforts = {};
+  pendingSelectedDay = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
   clearSwapOverride(); // clear any OHP swap after logging
@@ -2172,20 +2263,20 @@ function logWorkout() {
 function advanceDay() {
   const d = loadData();
   const structure = getDayStructure(d.settings.daysPerWeek);
+  const totalDays = d.settings.daysPerWeek || structure.length;
 
-  // Remove current day from queue
-  if (d.dayQueue.length > 0) {
-    d.dayQueue.shift();
-  }
+  // In the day-selector model, week advances when all days are logged.
+  // Use actual log count rather than queue state (queue is not kept in sync with selector picks).
+  const logsThisWeek = d.workoutLogs.filter(l => l.week === d.currentWeek).length;
+  const allDaysLogged = logsThisWeek >= totalDays;
 
-  // If queue is empty, start a new week
-  if (d.dayQueue.length === 0) {
+  if (allDaysLogged) {
     d.currentWeek++;
     const newWeek = d.currentWeek;
 
-    // Refill the queue with new cycle
-    const totalDays = d.settings.daysPerWeek || structure.length;
+    // Refill queue for new week
     d.dayQueue = Array.from({length: totalDays}, (_, i) => i + 1);
+    d.currentDay = 1;
 
     // Performance-derived TM advancement
     if (newWeek % 4 !== 0) { // skip deload weeks
@@ -2211,13 +2302,16 @@ function advanceDay() {
         d.nextTMBonus = 0;
       }
     }
+  } else {
+    // Some days still unlogged — just update queue state to stay consistent
+    d.dayQueue = Array.from({length: totalDays}, (_, i) => i + 1)
+      .filter(dayNum => !d.workoutLogs.some(l => l.week === d.currentWeek && l.day === dayNum));
+    d.currentDay = d.dayQueue[0] || 1;
   }
-
-  // Set currentDay to next day in queue
-  d.currentDay = d.dayQueue[0] || 1;
 
   saveData(d);
   pendingStatuses = {};
+  pendingSelectedDay = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
   renderToday();
@@ -2231,9 +2325,14 @@ function skipWorkout() {
 
 function unlockToday() {
   const d = loadData();
-  d.workoutLogs = d.workoutLogs.filter(l => !(l.week === d.currentWeek && l.day === d.currentDay));
+  // Remove the log for whichever day we're currently viewing
+  const dayToUnlock = pendingSelectedDay || d.currentDay;
+  d.workoutLogs = d.workoutLogs.filter(l => !(l.week === d.currentWeek && l.day === dayToUnlock));
   saveData(d);
   pendingStatuses = {};
+  pendingNotes = '';
+  pendingEfforts = {};
+  pendingSelectedDay = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
   renderToday();
@@ -3567,9 +3666,9 @@ function renderSettings() {
 
 window.addEventListener('DOMContentLoaded', () => {
   updateHeader();
+  restorePending();  // must run before renderToday so pendingSelectedDay is set
   renderToday();
   renderSettings();
-  restorePending();
 
   const d = loadData();
   if (!d.trainingMax) {
