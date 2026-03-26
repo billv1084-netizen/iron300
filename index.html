@@ -594,6 +594,44 @@
   }
 
   .graph-card svg { display: block; }
+
+  #sync-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e;
+    color: #7ed6a0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+    border: 1px solid #2a4a3a;
+  }
+  #sync-toast.show { opacity: 1; }
+
+  .effort-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .effort-btn {
+    flex: 1;
+    padding: 4px 0;
+    font-size: 11px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    background: #1a1a2e;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .effort-btn.selected-easy { background: #1a3a2a; color: #7ed6a0; border-color: #7ed6a0; }
+  .effort-btn.selected-ok   { background: #1a2a3a; color: #7ab0d6; border-color: #7ab0d6; }
+  .effort-btn.selected-hard { background: #3a1a1a; color: #e07070; border-color: #e07070; }
 </style>
 </head>
 <body>
@@ -753,7 +791,16 @@
 
 function loadData() {
   try {
-    return JSON.parse(localStorage.getItem('iron300_data')) || defaultData();
+    const d = JSON.parse(localStorage.getItem('iron300_data')) || defaultData();
+    // Initialize dayQueue if absent
+    if (!d.dayQueue || d.dayQueue.length === 0) {
+      const totalDays = d.settings?.daysPerWeek || 4;
+      d.dayQueue = [];
+      for (let i = 0; i < totalDays; i++) {
+        d.dayQueue.push(((d.currentDay - 1 + i) % totalDays) + 1);
+      }
+    }
+    return d;
   } catch(e) { return defaultData(); }
 }
 
@@ -774,6 +821,7 @@ function defaultData() {
     estimated1RM: null,
     currentWeek: 1,
     currentDay: 1,
+    dayQueue: [], // ordered array of upcoming day indices for this cycle
     program: null, // generated program
     workoutLogs: [], // [{week, day, date, exercises:[{name, sets:[{weight,reps,done,fail}]}]}]
     failStreak: {}, // {exerciseName: count}
@@ -818,6 +866,19 @@ function roundWeight(weight, group, barWeight, smallestPlate) {
 function pct(trainingMax, p, barWeight, smallestPlate) {
   const raw = trainingMax * p / 100;
   return roundToPlate(raw, barWeight, smallestPlate);
+}
+
+// RPE to 1RM percentage mapping
+const RPE_PERCENTAGES = {
+  6: 0.78, 6.5: 0.80, 7: 0.83, 7.5: 0.855,
+  8: 0.89, 8.5: 0.915, 9: 0.94, 9.5: 0.97, 10: 1.00
+};
+
+// Calculate implied 1RM from weight and RPE
+function impliedOneRM(weight, rpe) {
+  const pct = RPE_PERCENTAGES[rpe] || RPE_PERCENTAGES[Math.round(rpe * 2) / 2];
+  if (!pct) return null;
+  return Math.round(weight / pct);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1079,36 +1140,65 @@ function generateOHPSets(week, ohpWeight, barWeight, smallestPlate) {
   };
 }
 
+// Generate scaled warmup ladder targeting percentages of top weight
+function generateScaledWarmups(topWeight, barWeight, smallestPlate) {
+  // Target percentages: 40%, 55%, 68%, 78%, 87%, 93%
+  // Reps: 8, 6, 4, 3, 2, 1
+  const percentages = [
+    { pct: 0.40, reps: 8 },
+    { pct: 0.55, reps: 6 },
+    { pct: 0.68, reps: 4 },
+    { pct: 0.78, reps: 3 },
+    { pct: 0.87, reps: 2 },
+    { pct: 0.93, reps: 1 },
+  ];
+
+  const warmups = [];
+  percentages.forEach(p => {
+    const calcWeight = topWeight * p.pct;
+    const floored = Math.max(barWeight, calcWeight);
+    const rounded = roundToPlate(floored, barWeight, smallestPlate);
+    // Never generate a warmup heavier than working weight
+    if (rounded < topWeight) {
+      warmups.push({ weight: rounded, reps: p.reps });
+    }
+  });
+  return warmups;
+}
+
 // Build specific warmup progressions matching your spreadsheet
 function buildBenchWarmups(topWeight, barWeight, smallestPlate, type) {
   if (type === 'heavy') {
-    // Full ladder to the single
-    return [
+    // Full ladder to the single using scaled warmups
+    const scaled = generateScaledWarmups(topWeight, barWeight, smallestPlate);
+    const final = [
       { weight: barWeight, reps: 10 },
       { weight: barWeight, reps: 8 },
-      { weight: roundToPlate(95, barWeight, smallestPlate),  reps: 5 },
-      { weight: roundToPlate(135, barWeight, smallestPlate), reps: 3 },
-      { weight: roundToPlate(165, barWeight, smallestPlate), reps: 2 },
-      { weight: roundToPlate(185, barWeight, smallestPlate), reps: 1 },
-      { weight: roundToPlate(205, barWeight, smallestPlate), reps: 1 },
-      { weight: roundToPlate(Math.min(topWeight * 0.92, 225), barWeight, smallestPlate), reps: 1, note: '3 min rest, then single' },
-    ].filter(w => w.weight < topWeight);
+      ...scaled,
+      { weight: roundToPlate(Math.min(topWeight * 0.92, topWeight - smallestPlate), barWeight, smallestPlate), reps: 1, note: '3 min rest, then single' },
+    ].filter((w, i, arr) => {
+      // Remove duplicates and filter by topWeight
+      if (w.weight >= topWeight) return false;
+      if (i > 0 && arr[i-1].weight === w.weight) return false;
+      return true;
+    });
+    return final;
   }
   if (type === 'volume') {
+    const scaled = generateScaledWarmups(topWeight, barWeight, smallestPlate);
     return [
       { weight: barWeight, reps: 10 },
       { weight: barWeight, reps: 8 },
-      { weight: roundToPlate(95, barWeight, smallestPlate),  reps: 5 },
-      { weight: roundToPlate(135, barWeight, smallestPlate), reps: 3 },
+      ...scaled.slice(0, 2),  // Just first 2 scaled warmups
       { weight: roundToPlate(topWeight * 0.75, barWeight, smallestPlate), reps: 1, note: 'then work sets' },
     ].filter(w => w.weight < topWeight);
   }
   if (type === 'speed') {
+    const scaled = generateScaledWarmups(topWeight, barWeight, smallestPlate);
     return [
       { weight: barWeight, reps: 10 },
       { weight: barWeight, reps: 8 },
-      { weight: roundToPlate(95, barWeight, smallestPlate),  reps: 5 },
-      { weight: roundToPlate(135, barWeight, smallestPlate), reps: 3 },
+      ...scaled.slice(0, 2),  // Just first 2 scaled warmups
       { weight: roundToPlate(topWeight * 0.85, barWeight, smallestPlate), reps: 1, note: 'then speed sets' },
     ].filter(w => w.weight < topWeight);
   }
@@ -1245,6 +1335,28 @@ function renderToday() {
         ${week % 4 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
       </div>
     </div>`;
+
+  // Day queue UI for reordering
+  if (!todayLog && d.dayQueue && d.dayQueue.length > 1) {
+    html += `<div style="margin-bottom:12px; padding:12px; background:var(--surface2); border-radius:6px; border:1px solid var(--border)">
+      <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px">Upcoming Days</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">`;
+
+    d.dayQueue.forEach((dayNum, idx) => {
+      const dayDayDef = structure[dayNum - 1];
+      const isToday = idx === 0;
+      const dayLabel = dayDayDef.label.split('—')[0].trim() || ('Day ' + dayNum);
+      const color = isToday ? 'var(--accent)' : 'var(--border)';
+      const textColor = isToday ? 'var(--accent)' : 'var(--text)';
+
+      html += `<div style="display:flex; align-items:center; gap:4px; padding:6px 10px; background:var(--surface); border:1px solid ${color}; border-radius:4px">
+        <span style="font-size:12px; color:${textColor}; font-weight:600">${isToday ? '◆ ' : ''}${dayLabel}</span>
+        ${idx > 0 ? `<button class="btn" style="padding:2px 6px; font-size:10px; background:transparent; color:var(--muted); border:none; cursor:pointer; hover:color:var(--accent)" onclick="moveDayUp(${idx})" title="Move up">↑</button>` : ''}
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  }
 
   if (todayLog) {
     html += `<div class="alert alert-success">✓ Workout logged! <a href="#" onclick="showPage('history')" style="color:var(--green)">View in History</a> — <a href="#" onclick="unlockToday()" style="color:var(--green)">Edit</a></div>`;
@@ -1505,6 +1617,10 @@ function renderToday() {
         </div>`;
       }
 
+      const pendingStatus = pendingStatuses[`ex-${exIdx}-${si}`] || {};
+      const effortValue = pendingEfforts[exIdx + '-' + si] || 'ok';
+      const showEffortRow = pendingStatus.done && !pendingStatus.fail && !todayLog;
+
       html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
         <div class="set-num">S${si+1}</div>
         <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : aw.weight}" ${todayLog?'readonly':''} /></div>
@@ -1513,6 +1629,11 @@ function renderToday() {
           ${statusText}
         </button>
       </div>
+      ${showEffortRow ? `<div class="effort-row" id="effort-${exIdx}-${si}">
+        <button class="effort-btn ${effortValue === 'easy' ? 'selected-easy' : ''}" data-effort="easy" onclick="setEffort('${exIdx}','${si}','easy')">Easy</button>
+        <button class="effort-btn ${effortValue === 'ok' ? 'selected-ok' : ''}" data-effort="ok" onclick="setEffort('${exIdx}','${si}','ok')">OK</button>
+        <button class="effort-btn ${effortValue === 'hard' ? 'selected-hard' : ''}" data-effort="hard" onclick="setEffort('${exIdx}','${si}','hard')">Hard</button>
+      </div>` : ''}
       ${prevRowHtml}`;
     }
 
@@ -1547,6 +1668,30 @@ function renderToday() {
 // Track set statuses in memory before logging
 let pendingStatuses = {}; // 'bench-0': {done:bool, fail:bool}
 let pendingNotes = '';    // workout notes before logging
+let pendingEfforts = {};  // 'exIdx-setIdx': 'easy'|'ok'|'hard'
+
+function setEffort(exIdx, setIdx, effort) {
+  const key = exIdx + '-' + setIdx;
+  pendingEfforts[key] = effort;
+  // Update button highlights
+  const row = document.getElementById('effort-' + exIdx + '-' + setIdx);
+  if (row) {
+    row.querySelectorAll('.effort-btn').forEach(b => {
+      b.className = 'effort-btn' + (b.dataset.effort === effort ? ' selected-' + effort : '');
+    });
+  }
+  localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, notes: pendingNotes }));
+}
+
+function moveDayUp(index) {
+  const d = loadData();
+  // Can't move the first day (today) or beyond array bounds
+  if (index <= 0 || index >= d.dayQueue.length) return;
+  // Swap with previous day
+  [d.dayQueue[index], d.dayQueue[index-1]] = [d.dayQueue[index-1], d.dayQueue[index]];
+  saveData(d);
+  renderToday(); // Re-render to show updated queue
+}
 
 function highlightRPE(setIdx, rpe) {
   const select = document.getElementById(`bench-rpe-${setIdx}`);
@@ -1612,7 +1757,7 @@ function autoSavePending() {
     document.querySelectorAll('[id^="bench-w-"],[id^="bench-r-"],[id^="ohp-w-"],[id^="ohp-r-"],[id^="ex-"]').forEach(el => {
       if (el.tagName === 'INPUT') inputs[el.id] = el.value;
     });
-    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, inputs, notes: pendingNotes }));
+    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, inputs, notes: pendingNotes }));
   } catch(e) {}
 }
 
@@ -1623,6 +1768,7 @@ function restorePending() {
     if (!saved) return;
     pendingStatuses = saved.statuses || {};
     pendingNotes = saved.notes || '';
+    pendingEfforts = saved.efforts || {};
     setTimeout(() => {
       Object.entries(pendingStatuses).forEach(([key, s]) => {
         let btnId;
@@ -1636,6 +1782,17 @@ function restorePending() {
         if (s.skipped) { btn.textContent = 'SKIP'; btn.style.opacity = '0.4'; }
         else if (s.done) { btn.className = 'set-status-btn done'; btn.textContent = 'DONE'; }
         else if (s.fail) { btn.className = 'set-status-btn fail'; btn.textContent = 'FAIL'; }
+      });
+
+      // Restore effort selections
+      Object.entries(pendingEfforts).forEach(([key, effort]) => {
+        const [exIdx, setIdx] = key.split('-');
+        const effortRow = document.getElementById('effort-' + exIdx + '-' + setIdx);
+        if (effortRow) {
+          effortRow.querySelectorAll('.effort-btn').forEach(b => {
+            b.className = 'effort-btn' + (b.dataset.effort === effort ? ' selected-' + effort : '');
+          });
+        }
       });
       if (saved.inputs) {
         Object.entries(saved.inputs).forEach(([id, val]) => {
@@ -1665,6 +1822,22 @@ function skipExercise(exIdx) {
     }
     si++;
   }
+}
+
+// Analyze effort pattern for a set of exercises
+function analyzeEffort(sets) {
+  // Only look at completed (done) sets
+  const doneSets = sets.filter(s => s.done && !s.skipped);
+  if (doneSets.length === 0) return 'unknown';
+  const effortValues = doneSets.map(s => s.effort || 'ok');
+  const hardCount = effortValues.filter(e => e === 'hard').length;
+  const easyCount = effortValues.filter(e => e === 'easy').length;
+
+  if (hardCount >= 2) return 'hard';  // 2+ hard sets = hard session
+  if (hardCount === 1 && doneSets.length >= 3) return 'hard'; // 1 hard in 3+ sets = hard
+  if (easyCount === doneSets.length) return 'easy';  // all easy
+  if (easyCount >= doneSets.length - 1 && doneSets.length >= 3) return 'mostly-easy'; // all but 1 easy
+  return 'ok';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1729,18 +1902,30 @@ function logWorkout() {
       const actualAvgWeight = actualWeights.reduce((a,b) => a+b, 0) / actualWeights.length;
       const actualMax = Math.max(...actualWeights);
       const avgReps = totalReps / ohpInfo.sets.length;
+      // Assume 'ok' effort for OHP (no UI for effort selection on OHP)
+      const effortPattern = 'ok';
 
       // If they lifted heavier than the prescribed weight, update ohpWeight upward
       if (actualMax > ohpWeight) {
         d.ohpWeight = roundToPlate(actualMax, barWeight, smallestPlate);
         d.ohpRepsPerSet = 5;
       } else if (avgReps >= 8) {
-        // Hit 4×8 at current weight → add 5 lbs, reset reps
-        d.ohpWeight = roundToPlate(ohpWeight + 5, barWeight, smallestPlate);
-        d.ohpRepsPerSet = 5;
+        // Hit 4×8 at current weight
+        if (effortPattern === 'hard') {
+          // Hard session — hold weight
+          d.ohpRepsPerSet = Math.max(5, (d.ohpRepsPerSet || 5) - 1);
+        } else {
+          // Normal or easy — add 5 lbs, reset reps
+          d.ohpWeight = roundToPlate(ohpWeight + 5, barWeight, smallestPlate);
+          d.ohpRepsPerSet = 5;
+        }
       } else {
-        // Add 1 rep to target per session
-        d.ohpRepsPerSet = Math.min(8, (d.ohpRepsPerSet || 5) + 1);
+        // Add 1 rep to target per session (or less if hard)
+        if (effortPattern === 'hard') {
+          d.ohpRepsPerSet = Math.max(5, (d.ohpRepsPerSet || 5) - 1);
+        } else {
+          d.ohpRepsPerSet = Math.min(8, (d.ohpRepsPerSet || 5) + 1);
+        }
       }
     }
 
@@ -1775,17 +1960,20 @@ function logWorkout() {
       const singleSet = benchSets.find(s => s.isSingle);
       const rpe = singleSet?.rpe || null;
       if (rpe !== null) {
+        // Calculate implied 1RM from this lift and RPE
+        d.lastImplied1RM = impliedOneRM(actualSingleWeight, rpe);
+        d.lastSingleRPE = rpe;
+      }
+
+      // Keep RPE bonus for reference but it will be less important with performance-derived TM
+      if (rpe !== null) {
         if (rpe <= 7) {
-          // Felt easy — jump +5 instead of +2.5 next advance
-          d.nextTMBonus = 2.5; // extra 2.5 on top of the normal +2.5 = +5 total
+          d.nextTMBonus = 2.5;
         } else if (rpe === 9 || rpe === 10) {
-          // Hard grind — hold, skip the normal weekly increment
-          d.nextTMBonus = -2.5; // cancels out the +2.5 that advanceDay will add
+          d.nextTMBonus = -2.5;
         } else {
-          // RPE 8 — normal, no modifier
           d.nextTMBonus = 0;
         }
-        d.lastSingleRPE = rpe;
       }
 
       const est = roundToPlate(actualSingleWeight / 0.88, barWeight, smallestPlate);
@@ -1824,10 +2012,12 @@ function logWorkout() {
     let actualWeights = [];
 
     const sets = [];
+    let progressionNote = 'Skipped — no change';
     for (let si = 0; si < exDef.sets; si++) {
       const w = parseFloat(document.getElementById(`ex-${exIdx}-w-${si}`)?.value) || aw.weight;
       const r = parseInt(document.getElementById(`ex-${exIdx}-r-${si}`)?.value) || aw.repTarget;
       const st = pendingStatuses[`ex-${exIdx}-${si}`] || {};
+      const effort = pendingEfforts[exIdx + '-' + si] || 'ok';  // Default to 'ok' if not set
 
       const skipped = st.skipped || (!st.done && !st.fail);
       const fail = st.fail || false;
@@ -1837,13 +2027,14 @@ function logWorkout() {
       if (fail)    { anyFail = true;    allDone = false; }
       if (done)    { anyDone = true; totalReps += r; actualWeights.push(w); }
 
-      sets.push({ weight: w, reps: r, done, fail, skipped });
+      sets.push({ weight: w, reps: r, done, fail, skipped, effort, progressionNote });
     }
     exercises.push({ name: exName, sets });
 
     // ── Progression decision ──
     if (anySkipped && !anyDone && !anyFail) {
       // Entire exercise skipped — hold, no change
+      progressionNote = 'Skipped — no change';
       d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
 
     } else if (anyFail) {
@@ -1857,6 +2048,7 @@ function logWorkout() {
         const newR = protocol.newReps(aw.repTarget, exDef.repRange);
         d.assistanceWeights[exName] = { weight: newW, repTarget: newR };
         d.failStreak[exName] = 0;
+        progressionNote = 'Held — consecutive failures, protocol applied';
         failGuidance.push({
           name: exName,
           group: exDef.group,
@@ -1867,6 +2059,7 @@ function logWorkout() {
         });
       } else {
         // First fail — hold weight and reps, try again next session
+        progressionNote = 'Held — missed reps on set ' + sets.findIndex(s => s.fail);
         d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
         failGuidance.push({
           name: exName,
@@ -1882,31 +2075,63 @@ function logWorkout() {
       d.failStreak[exName] = 0; // clear streak on clean session
       const actualMax = Math.max(...actualWeights);
       const avgReps = totalReps / exDef.sets;
+      const effortPattern = analyzeEffort(sets);
 
       if (actualMax > aw.weight) {
         // You lifted heavier than suggested — anchor to actual weight
+        progressionNote = 'Advanced — lifted heavier than prescribed';
         d.assistanceWeights[exName] = {
           weight: roundWeight(actualMax, exDef.group, barWeight, smallestPlate),
           repTarget: exDef.repRange[0],
         };
       } else if (avgReps >= aw.repTarget) {
         // Hit or exceeded the current rep target on all sets
-        if (aw.repTarget >= exDef.repRange[1]) {
-          // At top of rep range — increase weight, reset reps to bottom
-          const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
-          d.assistanceWeights[exName] = {
-            weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
-            repTarget: exDef.repRange[0],
-          };
-        } else {
-          // Below top of range — add 1 rep target for next session
+        if (effortPattern === 'hard') {
+          // Hard session — hold weight and reps
+          progressionNote = 'Held — hard sets detected';
           d.assistanceWeights[exName] = {
             weight: aw.weight,
-            repTarget: aw.repTarget + 1,
+            repTarget: aw.repTarget,
           };
+        } else if (aw.repTarget >= exDef.repRange[1]) {
+          // At top of rep range
+          const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
+          if (effortPattern === 'easy') {
+            // All easy — jump weight immediately
+            progressionNote = 'Advanced — all sets felt easy, jumped weight';
+            d.assistanceWeights[exName] = {
+              weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
+              repTarget: exDef.repRange[0],
+            };
+          } else {
+            // ok or mostly-easy at ceiling — normal progression
+            progressionNote = 'Advanced — hit rep ceiling, weight increased';
+            d.assistanceWeights[exName] = {
+              weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
+              repTarget: exDef.repRange[0],
+            };
+          }
+        } else {
+          // Below top of range
+          if (effortPattern === 'easy') {
+            // All easy — add 2 reps instead of 1
+            progressionNote = 'Advanced — easy session, added 2 reps';
+            d.assistanceWeights[exName] = {
+              weight: aw.weight,
+              repTarget: Math.min(exDef.repRange[1], aw.repTarget + 2),
+            };
+          } else {
+            // Normal progression — add 1 rep
+            progressionNote = 'Advanced — added 1 rep';
+            d.assistanceWeights[exName] = {
+              weight: aw.weight,
+              repTarget: aw.repTarget + 1,
+            };
+          }
         }
       } else {
         // Didn't hit rep target — hold weight and reps
+        progressionNote = 'Held — below rep target';
         d.assistanceWeights[exName] = {
           weight: aw.weight,
           repTarget: aw.repTarget,
@@ -1915,8 +2140,12 @@ function logWorkout() {
 
     } else {
       // Partial session (some done, some skipped, no fails) — hold, no change
+      progressionNote = 'Held — incomplete session';
       d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
     }
+
+    // Update progressionNote on all sets for this exercise
+    exercises[exercises.length - 1].sets.forEach(s => s.progressionNote = progressionNote);
   });
 
   const notesEl = document.getElementById('workout-notes');
@@ -1944,22 +2173,48 @@ function advanceDay() {
   const d = loadData();
   const structure = getDayStructure(d.settings.daysPerWeek);
 
-  if (d.currentDay >= structure.length) {
-    d.currentDay = 1;
+  // Remove current day from queue
+  if (d.dayQueue.length > 0) {
+    d.dayQueue.shift();
+  }
+
+  // If queue is empty, start a new week
+  if (d.dayQueue.length === 0) {
     d.currentWeek++;
     const newWeek = d.currentWeek;
-    // Don't increase TM when rolling INTO a deload week (week % 4 === 0)
-    if (newWeek % 4 !== 0) {
-      const bonus = d.nextTMBonus || 0;
-      const increment = 2.5 + bonus;
-      if (increment > 0) {
+
+    // Refill the queue with new cycle
+    const totalDays = d.settings.daysPerWeek || structure.length;
+    d.dayQueue = Array.from({length: totalDays}, (_, i) => i + 1);
+
+    // Performance-derived TM advancement
+    if (newWeek % 4 !== 0) { // skip deload weeks
+      if (d.lastImplied1RM) {
+        // Derive target TM from actual performance
+        const targetTM = roundToPlate(d.lastImplied1RM * 0.90, d.settings.barWeight, d.settings.smallestPlate);
+        // Cap change at ±10 lbs per week to prevent whiplash
+        const maxJump = 10;
+        const change = Math.max(-maxJump, Math.min(maxJump, targetTM - d.trainingMax));
+        if (change > 0) {
+          d.trainingMax = roundToPlate(d.trainingMax + change, d.settings.barWeight, d.settings.smallestPlate);
+        } else if (change < 0) {
+          // Only drop if change is -5 or more, and only by half the suggested drop
+          if (change <= -5) {
+            d.trainingMax = roundToPlate(d.trainingMax + Math.ceil(change / 2), d.settings.barWeight, d.settings.smallestPlate);
+          }
+        }
+        d.nextTMBonus = 0;
+      } else {
+        // No single logged yet (first week or missed single) — fall back to +2.5
+        const increment = 2.5;
         d.trainingMax = roundToPlate(d.trainingMax + increment, d.settings.barWeight, d.settings.smallestPlate);
+        d.nextTMBonus = 0;
       }
-      d.nextTMBonus = 0;
     }
-  } else {
-    d.currentDay++;
   }
+
+  // Set currentDay to next day in queue
+  d.currentDay = d.dayQueue[0] || 1;
 
   saveData(d);
   pendingStatuses = {};
@@ -2281,12 +2536,16 @@ function renderHistory() {
     }
 
     // Assistance summary
-    const assistance = log.exercises?.filter(e => e.name !== 'Bench Press') || [];
+    const assistance = log.exercises?.filter(e => e.name !== 'Bench Press' && e.name !== 'Overhead Press') || [];
     if (assistance.length > 0) {
-      html += `<div style="display:flex; flex-wrap:wrap; gap:6px">`;
+      html += `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px">`;
       assistance.forEach(ex => {
         const anyFail = ex.sets.some(s => s.fail);
-        html += `<span class="tag ${anyFail ? 'tag-fail' : 'tag-success'}" style="font-family:'DM Sans',sans-serif; font-size:11px">${ex.name}</span>`;
+        const progressNote = ex.sets?.[0]?.progressionNote || '';
+        html += `<div>
+          <span class="tag ${anyFail ? 'tag-fail' : 'tag-success'}" style="font-family:'DM Sans',sans-serif; font-size:11px">${ex.name}</span>
+          ${progressNote ? `<div style="color:#888; font-size:12px; font-style:italic; margin-top:2px">${progressNote}</div>` : ''}
+        </div>`;
       });
       html += `</div>`;
     }
@@ -2357,13 +2616,22 @@ function renderSettings() {
 
 function updateHeader() {
   const d = loadData();
-  const rm = d.estimated1RM;
+  // Use lastImplied1RM if available (from logged RPE), fall back to estimated1RM
+  const rm = d.lastImplied1RM || d.estimated1RM;
   const goal = d.settings?.goal || 300;
 
   const rmEl = document.getElementById('header-1rm');
   const pctEl = document.getElementById('header-pct');
 
-  if (rmEl) rmEl.textContent = rm ? rm + ' lbs' : '—';
+  if (rmEl) {
+    if (rm) {
+      const label = d.lastImplied1RM ? ' (from last single)' : '';
+      rmEl.textContent = rm + ' lbs';
+      rmEl.title = 'Est. 1RM' + label;
+    } else {
+      rmEl.textContent = '—';
+    }
+  }
   if (pctEl && rm) pctEl.textContent = Math.min(100, Math.round(rm / goal * 100)) + '%';
 }
 
@@ -3113,7 +3381,10 @@ async function syncToGithub(showFeedback) {
     const data = localStorage.getItem('iron300_data');
     if (!data) { if (showFeedback) showSyncStatus('No local data to push.', 'error'); return false; }
 
-    const content = btoa(unescape(encodeURIComponent(data)));
+    // Encode using TextEncoder/TextDecoder for proper UTF-8 handling
+    const bytes = new TextEncoder().encode(data);
+    const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
+    const content = btoa(binary);
     const filePath = 'iron300_data.json';
     const apiUrl = 'https://api.github.com/repos/' + user + '/' + repo + '/contents/' + filePath;
 
@@ -3180,13 +3451,34 @@ async function syncFromGithub() {
       return;
     }
     const file = await res.json();
-    const decoded = decodeURIComponent(escape(atob(file.content.replace(/\n/g,''))));
+    // Decode using TextDecoder for proper UTF-8 handling
+    const binary = atob(file.content.replace(/\n/g, ''));
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    const decoded = new TextDecoder().decode(bytes);
     // Validate it's real iron300 data
     const parsed = JSON.parse(decoded);
-    if (!parsed.workoutLogs || !parsed.settings) {
-      showSyncStatus('&#10007; Data file on GitHub doesn\'t look like iron300 data.', 'error');
+    if (!parsed.workoutLogs || !Array.isArray(parsed.workoutLogs) ||
+        !parsed.settings || typeof parsed.settings !== 'object' ||
+        typeof parsed.trainingMax !== 'number' && parsed.trainingMax !== null) {
+      showSyncStatus('Invalid data format from GitHub — pull cancelled', 'error');
       return;
     }
+
+    // Conflict detection: compare timestamps
+    const localData = JSON.parse(localStorage.getItem('iron300_data') || '{}');
+    const localLogs = localData.workoutLogs || [];
+    const remoteLogs = parsed.workoutLogs || [];
+    const localLatest = localLogs.length ? new Date(localLogs[localLogs.length-1].date).getTime() : 0;
+    const remoteLatest = remoteLogs.length ? new Date(remoteLogs[remoteLogs.length-1].date).getTime() : 0;
+
+    if (localLatest > remoteLatest) {
+      const ok = confirm('Your local data has a more recent workout than GitHub. Pulling will overwrite it. Continue?');
+      if (!ok) {
+        showSyncStatus('Pull cancelled to protect local data', 'info');
+        return;
+      }
+    }
+
     localStorage.setItem('iron300_data', decoded);
     localStorage.setItem('gh_last_sync', new Date().toISOString());
     showSyncStatus('&#8595; Pulled from GitHub successfully! Reloading...', 'success');
@@ -3201,7 +3493,12 @@ async function syncFromGithub() {
 async function autoSync() {
   const { token } = getGithubConfig();
   if (!token) return; // not configured, skip silently
-  await syncToGithub(false);
+  const success = await syncToGithub(false);
+  if (success) {
+    showToast('Synced to GitHub ✓');
+  } else {
+    showToast('Sync failed — check connection', true);
+  }
 }
 
 function showSyncStatus(msg, type) {
@@ -3218,6 +3515,15 @@ function updateSyncBadge() {
   if (!last) return;
   const el = document.getElementById('sync-last');
   if (el) el.textContent = 'Last synced: ' + new Date(last).toLocaleString();
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('sync-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.color = isError ? '#e07070' : '#7ed6a0';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 
 function renderSettings() {
@@ -3272,5 +3578,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
+
+<div id="sync-toast"></div>
 </body>
 </html>
