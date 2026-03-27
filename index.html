@@ -952,7 +952,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day A — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher']
       },
       {
         label: 'Day B — OHP + Lats + Bis',
@@ -962,7 +962,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day C — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','JM Press','Cable Fly']
+        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','JM Press']
       },
     ];
   } else if (daysPerWeek === 4) {
@@ -970,12 +970,12 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Hammer Strength Incline','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
       },
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Close Grip Pulldown','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+        assistance: ['Close Grip Pulldown','Face Pull','Hammer Curl','Overhead Tricep Ext']
       },
       {
         label: 'Day 3 — OHP + Lats + Bis',
@@ -983,9 +983,9 @@ function getDayStructure(daysPerWeek) {
         assistance: ['Lat Pulldown','Machine Lateral Raise','EZ Bar Curl (Outside Grip)','Tricep Pushdown']
       },
       {
-        label: 'Day 4 — Speed Bench + Back + Arms',
-        benchFocus: 'speed',
-        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','JM Press']
+        label: 'Day 4 — Paused Bench + Back + Arms',
+        benchFocus: 'paused',
+        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl']
       },
     ];
     // Back 16, Shoulders 16, Biceps 16, Triceps 16, Chest 6 ✓
@@ -994,12 +994,12 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher','Hammer Strength Incline']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher']
       },
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext','Cable Fly']
+        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext']
       },
       {
         label: 'Day 3 — OHP + Lats + Bis',
@@ -1007,9 +1007,9 @@ function getDayStructure(daysPerWeek) {
         assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
       },
       {
-        label: 'Day 4 — Speed Bench + Back + Arms',
-        benchFocus: 'speed',
-        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','JM Press']
+        label: 'Day 4 — Paused Bench + Back + Arms',
+        benchFocus: 'paused',
+        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl']
       },
       {
         label: 'Day 5 — OHP + Full Upper Accessory',
@@ -1032,8 +1032,8 @@ function getDayStructure(daysPerWeek) {
 // Deload every 4th week: drop to 60% for all bench work
 // ─────────────────────────────────────────────────────────
 
-function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate) {
-  const isDeload = (week % 4 === 0);
+function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate, overrideWeight) {
+  const isDeload = (week % 5 === 0);
 
   // ── DELOAD ──
   if (isDeload) {
@@ -1059,25 +1059,25 @@ function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate) {
         sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 4, isAMRAP: false, label: 'Set' }))
       };
     }
-    if (focus === 'speed') {
-      const w = pct(trainingMax, 50, barWeight, smallestPlate);
+    if (focus === 'paused') {
+      const w = pct(trainingMax, 55, barWeight, smallestPlate);
       return {
-        label: 'Deload — Speed Work',
-        note: 'Half the normal sets. Focus on explosiveness.',
-        warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'speed'),
-        sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 3, isAMRAP: false, label: 'Speed' }))
+        label: 'Deload — Paused Bench',
+        note: '2-second pause at the chest on every rep. Light load, own the position.',
+        warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'paused'),
+        sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 3, isAMRAP: false, label: 'Paused' }))
       };
     }
   }
 
   // ── HEAVY DAY (Weekend) — Top Single + 4×5 back-offs ──
   if (focus === 'heavy') {
-    // Single = 90% of TM. TM already advances each week — no week offset needed.
-    const singleWeight = roundToPlate(trainingMax * 0.90, barWeight, smallestPlate);
-    const backOffWeight = roundToPlate(singleWeight * 0.83, barWeight, smallestPlate);
+    // Single = TM itself. TM is already set conservatively (~88-90% of e1RM) — no further discount.
+    const singleWeight = roundToPlate(trainingMax, barWeight, smallestPlate);
+    const backOffWeight = roundToPlate(singleWeight * 0.85, barWeight, smallestPlate);
     return {
       label: 'Heavy Single + 4×5 Back-offs',
-      note: 'Single target: RPE 7.5–8. If bar speed is slow or grind-y, stop. Back-offs: controlled, no grinders. Rest 3–5 min before single, 3–4 min between back-offs.',
+      note: 'Single target: RPE 7.5–8.5. Treat the suggested weight as the floor — go heavier if bar moves well. Back-offs: controlled, no grinders. Rest 3–5 min before single, 3–4 min between back-offs.',
       warmups: buildBenchWarmups(singleWeight, barWeight, smallestPlate, 'heavy'),
       sets: [
         { targetWeight: singleWeight, targetReps: 1, isAMRAP: false, isSingle: true, label: 'Top Single (RPE 7.5–8)' },
@@ -1089,25 +1089,26 @@ function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate) {
     };
   }
 
-  // ── VOLUME DAY (Wednesday) — 4×6 ──
+  // ── VOLUME DAY — 4×6, RPE-autoregulated ──
   if (focus === 'volume') {
-    const w = roundToPlate(trainingMax * 0.745, barWeight, smallestPlate);
+    // Use stored volume weight if available (adjusted week-to-week by RPE), else seed from TM
+    const w = overrideWeight || roundToPlate(trainingMax * 0.745, barWeight, smallestPlate);
     return {
       label: '4×6 Volume Bench',
-      note: 'If the last set is near-failure, hold this weight next week. Rest 2:00–2:45 between sets.',
+      note: 'Rate the RPE of your last set. The weight adjusts automatically next week — RPE ≤7 adds 5 lbs, RPE 8 adds 2.5, RPE 9 holds, RPE 9+ drops 2.5. Rest 2:00–2:45 between sets.',
       warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'volume'),
-      sets: [1,2,3,4].map(() => ({ targetWeight: w, targetReps: 6, isAMRAP: false, label: 'Set' }))
+      sets: [1,2,3,4].map((_, i) => ({ targetWeight: w, targetReps: 6, isAMRAP: false, label: 'Set', isLastVolumeSet: i === 3 }))
     };
   }
 
-  // ── SPEED DAY (Thursday) — 8×3 @ 65% ──
-  if (focus === 'speed') {
-    const w = roundToPlate(trainingMax * 0.65, barWeight, smallestPlate);
+  // ── PAUSED BENCH DAY (Thursday) — 5×4 @ 75% TM ──
+  if (focus === 'paused') {
+    const w = roundToPlate(trainingMax * 0.75, barWeight, smallestPlate);
     return {
-      label: '8×3 Speed Bench',
-      note: 'Every rep explosive — treat it like you\'re trying to throw the bar through the ceiling. Rest 60–90s between sets. If bar speed dies, the weight is too heavy.',
-      warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'speed'),
-      sets: [1,2,3,4,5,6,7,8].map(() => ({ targetWeight: w, targetReps: 3, isAMRAP: false, label: 'Speed' }))
+      label: '5×4 Paused Bench',
+      note: '2-second pause at the chest — bar fully stopped, then press. No touch-and-go. This builds leg drive, position, and lock-out strength. Rest 2–3 min between sets.',
+      warmups: buildBenchWarmups(w, barWeight, smallestPlate, 'paused'),
+      sets: [1,2,3,4,5].map(() => ({ targetWeight: w, targetReps: 4, isAMRAP: false, label: 'Paused' }))
     };
   }
 
@@ -1116,7 +1117,7 @@ function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate) {
 
 // ── OHP for Day 2 ──
 function generateOHPSets(week, ohpWeight, barWeight, smallestPlate) {
-  const isDeload = (week % 4 === 0);
+  const isDeload = (week % 5 === 0);
   if (isDeload) {
     const w = roundToPlate(ohpWeight * 0.7, barWeight, smallestPlate);
     return {
@@ -1170,16 +1171,17 @@ function generateScaledWarmups(topWeight, barWeight, smallestPlate) {
 
 // Build specific warmup progressions matching your spreadsheet
 function buildBenchWarmups(topWeight, barWeight, smallestPlate, type) {
+  const WARMUP_START = 135; // First real warmup set — skip the empty bar work
+
   if (type === 'heavy') {
-    // Full ladder to the single using scaled warmups
+    // Full ladder to the single: start at 135, then scaled steps above 135, then 97% feeder
     const scaled = generateScaledWarmups(topWeight, barWeight, smallestPlate);
+    const stepsAbove = scaled.filter(s => s.weight > WARMUP_START);
     const final = [
-      { weight: barWeight, reps: 10 },
-      { weight: barWeight, reps: 8 },
-      ...scaled,
-      { weight: roundToPlate(Math.min(topWeight * 0.92, topWeight - smallestPlate), barWeight, smallestPlate), reps: 1, note: '3 min rest, then single' },
+      { weight: WARMUP_START, reps: 10 },
+      ...stepsAbove,
+      { weight: roundToPlate(topWeight * 0.97, barWeight, smallestPlate), reps: 1, note: '3 min rest, then single' },
     ].filter((w, i, arr) => {
-      // Remove duplicates and filter by topWeight
       if (w.weight >= topWeight) return false;
       if (i > 0 && arr[i-1].weight === w.weight) return false;
       return true;
@@ -1187,22 +1189,34 @@ function buildBenchWarmups(topWeight, barWeight, smallestPlate, type) {
     return final;
   }
   if (type === 'volume') {
+    // Abbreviated ladder: 135, up to 2 scaled steps above 135, then work sets
     const scaled = generateScaledWarmups(topWeight, barWeight, smallestPlate);
+    const steps = scaled.filter(s => s.weight > WARMUP_START).slice(0, 2).map(s => ({...s}));
+    const startNote = steps.length === 0 ? 'then work sets' : undefined;
+    if (steps.length > 0) steps[steps.length - 1].note = 'then work sets';
     return [
-      { weight: barWeight, reps: 10 },
-      { weight: barWeight, reps: 8 },
-      ...scaled.slice(0, 2),  // Just first 2 scaled warmups
-      { weight: roundToPlate(topWeight * 0.75, barWeight, smallestPlate), reps: 1, note: 'then work sets' },
-    ].filter(w => w.weight < topWeight);
+      { weight: WARMUP_START, reps: 8, ...(startNote ? {note: startNote} : {}) },
+      ...steps,
+    ].filter((w, i, arr) => {
+      if (w.weight >= topWeight) return false;
+      if (i > 0 && arr[i-1].weight === w.weight) return false;
+      return true;
+    });
   }
-  if (type === 'speed') {
+  if (type === 'paused') {
+    // Brief warmup: 135, up to 2 scaled steps above 135, then paused sets
     const scaled = generateScaledWarmups(topWeight, barWeight, smallestPlate);
+    const steps = scaled.filter(s => s.weight > WARMUP_START).slice(0, 2).map(s => ({...s}));
+    const startNote = steps.length === 0 ? 'then paused sets' : undefined;
+    if (steps.length > 0) steps[steps.length - 1].note = 'then paused sets';
     return [
-      { weight: barWeight, reps: 10 },
-      { weight: barWeight, reps: 8 },
-      ...scaled.slice(0, 2),  // Just first 2 scaled warmups
-      { weight: roundToPlate(topWeight * 0.85, barWeight, smallestPlate), reps: 1, note: 'then speed sets' },
-    ].filter(w => w.weight < topWeight);
+      { weight: WARMUP_START, reps: 8, ...(startNote ? {note: startNote} : {}) },
+      ...steps,
+    ].filter((w, i, arr) => {
+      if (w.weight >= topWeight) return false;
+      if (i > 0 && arr[i-1].weight === w.weight) return false;
+      return true;
+    });
   }
   return [];
 }
@@ -1225,7 +1239,7 @@ function saveSettings() {
 
   d.settings = { goal, equipment, daysPerWeek: days, barWeight, smallestPlate };
   d.estimated1RM = rm;
-  // Training max = 90% of 1RM — the single on week 1 will be ~90% of TM (= ~81% of 1RM, RPE ~7.5)
+  // Training max starts at ~93.5% of e1RM — the single on week 1 = TM ≈ RPE 8
   d.trainingMax = Math.round(rm * 0.935); // calibrated so week1 single ≈ 90% TM ≈ RPE 7.5–8
   d.currentWeek = 1;
   d.currentDay = 1;
@@ -1282,12 +1296,12 @@ function showPage(name) {
 // ═══════════════════════════════════════════════════════════
 
 function renderDaySelector(el, d, week, structure) {
-  const isDeload = (week % 4 === 0);
-  const focusLabels = { heavy: 'Heavy Bench', volume: 'Volume Bench', speed: 'Speed Bench', ohp: 'OHP' };
+  const isDeload = (week % 5 === 0);
+  const focusLabels = { heavy: 'Heavy Bench', volume: 'Volume Bench', paused: 'Paused Bench', ohp: 'OHP' };
   const focusDescriptions = {
     heavy: 'Top single + 4×5 back-offs',
     volume: '4×6 at moderate load',
-    speed: '8×3 explosive reps',
+    paused: '5×4 paused reps @ 75% TM',
     ohp: 'Overhead press + lats'
   };
 
@@ -1413,7 +1427,7 @@ function renderToday() {
   // Check if this day was already logged this week (shouldn't happen in normal flow, but handle it)
   const todayLog = d.workoutLogs.find(l => l.week === week && l.day === pendingSelectedDay);
 
-  const focusLabels = { heavy: 'HEAVY DAY', volume: 'VOLUME DAY', speed: 'SPEED DAY', ohp: 'OHP DAY' };
+  const focusLabels = { heavy: 'HEAVY DAY', volume: 'VOLUME DAY', paused: 'PAUSED DAY', ohp: 'OHP DAY' };
   const focusBadge = focusLabels[dayDef.benchFocus] || 'ACCESSORY';
 
   let html = `
@@ -1424,7 +1438,7 @@ function renderToday() {
       </div>
       <div style="display:flex; gap:8px; align-items:center">
         <button onclick="cancelWorkout()" style="background:transparent; border:none; color:var(--muted); font-size:12px; cursor:pointer; padding:4px 8px; border-radius:4px; border:1px solid var(--border)">← Change</button>
-        ${week % 4 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
+        ${week % 5 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
       </div>
     </div>`;
 
@@ -1462,7 +1476,7 @@ function renderToday() {
 
   // BENCH / OHP SECTION
   if (dayDef.benchFocus) {
-    const isDeload = (week % 4 === 0);
+    const isDeload = (week % 5 === 0);
     const barWeight = d.settings.barWeight;
     const smallestPlate = d.settings.smallestPlate;
 
@@ -1507,8 +1521,9 @@ function renderToday() {
       html += `</div>`;
 
     } else {
-      // ── BENCH DAY (heavy / volume / speed) ──
-      const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate);
+      // ── BENCH DAY (heavy / volume / paused) ──
+      const volOverride = dayDef.benchFocus === 'volume' ? d.volumeDayWeight : undefined;
+      const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate, volOverride);
       const prevFail = (d.failStreak['Bench Press'] || 0) >= 2;
       const loggedBench = todayLog?.exercises?.find(e => e.name === 'Bench Press');
 
@@ -1526,7 +1541,7 @@ function renderToday() {
       }
 
       html += `<div class="note-box" style="margin-bottom:12px; font-size:12px">
-        <strong>How weights update:</strong> When you log today's single, the app reads the weight you <em>actually lifted</em> — not the suggested weight — and recalculates your training max from that. All future bench weights (back-offs, volume, speed) will flow from your real number. If you lifted more than suggested, next week climbs from there.
+        <strong>How weights update:</strong> The single = your training max (TM). After you log it, RPE determines next week's TM: RPE ≤7 → +5 lbs, RPE 8 → +2.5 lbs, RPE 8.5–9 → hold, RPE 10 → −2.5 lbs. Back-offs, volume day, and paused day all flow from the same TM.
       </div>`;
 
       // Warmup table
@@ -1579,12 +1594,29 @@ function renderToday() {
           '</select></div>'
         ) : '';
 
+        // Volume day: RPE selector on last set (Set 4)
+        const isVolume = dayDef.benchFocus === 'volume';
+        const isLastVolumeSet = isVolume && s.isLastVolumeSet;
+        const volRpe = loggedSet ? (loggedSet.rpe || 0) : 0;
+        const volumeRpeSelect = (isLastVolumeSet && !isHeavy) ? (
+          '<div style="margin: -4px 0 10px 0; padding: 8px 10px; background:var(--surface2); border-radius:0 0 6px 6px; border:1px solid var(--border); border-top:none; display:flex; align-items:center; gap:10px; flex-wrap:wrap">' +
+          '<span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Last set RPE:</span>' +
+          '<select id="bench-vol-rpe" ' + (todayLog?'disabled':'') + ' style="background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:5px 8px; font-size:13px; cursor:pointer; flex:1; min-width:140px">' +
+          '<option value="">Select RPE...</option>' +
+          '<option value="6" ' + (volRpe==6?'selected':'') + '>6 — Very easy, big jump next week (+5)</option>' +
+          '<option value="7" ' + (volRpe==7?'selected':'') + '>7 — Easy, jump next week (+5)</option>' +
+          '<option value="8" ' + (volRpe==8?'selected':'') + '>8 — On target (+2.5)</option>' +
+          '<option value="9" ' + (volRpe==9?'selected':'') + '>9 — Hard grind, hold weight</option>' +
+          '<option value="10" ' + (volRpe==10?'selected':'') + '>9.5–10 — Drop 2.5 lbs next week</option>' +
+          '</select></div>'
+        ) : '';
+
         html += `<div class="set-row" style="grid-template-columns:${isHeavy ? '120px' : '60px'} 1fr 1fr 90px">
           <div class="set-num" style="${labelStyle}">${s.label || ('S'+(i+1))}</div>
-          <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} /></div>
+          <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} ${(s.isSingle && !todayLog) ? 'oninput="updateBackOffsFromSingle(this.value)"' : ''} /></div>
           <div><input class="set-input" id="bench-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
           <button class="set-status-btn ${statusClass}" id="bench-s-${i}" onclick="toggleSetStatus('bench',${i})" ${todayLog?'disabled':''}>${statusText}</button>
-        </div>${rpeSelect}`;
+        </div>${rpeSelect}${volumeRpeSelect}`;
       });
 
       // RPE legend — only on heavy day, only when not yet logged
@@ -1740,6 +1772,18 @@ let pendingStatuses = {}; // 'bench-0': {done:bool, fail:bool}
 let pendingNotes = '';    // workout notes before logging
 let pendingEfforts = {};  // 'exIdx-setIdx': 'easy'|'ok'|'hard'
 let pendingSelectedDay = null; // which day the user chose to do today (1-indexed)
+
+// When the user edits the single weight, auto-update the 4 back-off inputs to 85% of that
+function updateBackOffsFromSingle(singleW) {
+  const w = parseFloat(singleW);
+  if (!w || isNaN(w) || w <= 0) return;
+  const d = loadData();
+  const newBackOff = roundToPlate(w * 0.85, d.settings.barWeight, d.settings.smallestPlate);
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('bench-w-' + i);
+    if (el && !el.readOnly) el.value = newBackOff;
+  }
+}
 
 function setEffort(exIdx, setIdx, effort) {
   const key = exIdx + '-' + setIdx;
@@ -2018,9 +2062,10 @@ function logWorkout() {
       }
     }
 
-  // ── BENCH DAYS (heavy / volume / speed) ──
+  // ── BENCH DAYS (heavy / volume / paused) ──
   } else if (dayDef.benchFocus) {
-    const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate);
+    const volOverride = dayDef.benchFocus === 'volume' ? d.volumeDayWeight : undefined;
+    const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate, volOverride);
     let singleFailed = false;
     let actualSingleWeight = null;
     let actualBackOffWeight = null;
@@ -2042,8 +2087,10 @@ function logWorkout() {
 
     // Update training max from what you ACTUALLY lifted + RPE adjustment
     if (dayDef.benchFocus === 'heavy' && !singleFailed && actualSingleWeight) {
-      const baseTM = roundToPlate(actualSingleWeight / 0.90, barWeight, smallestPlate);
-      if (baseTM > d.trainingMax) d.trainingMax = baseTM;
+      // If the lifter went heavier than TM (e.g. had a great day and added weight), update TM immediately.
+      if (actualSingleWeight > d.trainingMax) {
+        d.trainingMax = roundToPlate(actualSingleWeight, barWeight, smallestPlate);
+      }
 
       // RPE-based progression modifier on next week's increment
       const singleSet = benchSets.find(s => s.isSingle);
@@ -2068,6 +2115,27 @@ function logWorkout() {
       const est = roundToPlate(actualSingleWeight / 0.88, barWeight, smallestPlate);
       if (est > (d.estimated1RM || 0)) d.estimated1RM = est;
       d.lastHeavySingle = actualSingleWeight;
+    }
+
+    // Volume day: update volumeDayWeight from RPE selector
+    if (dayDef.benchFocus === 'volume') {
+      const volRpeEl = document.getElementById('bench-vol-rpe');
+      const volRpe = volRpeEl ? parseInt(volRpeEl.value) : null;
+      const currentVolWeight = d.volumeDayWeight || roundToPlate(d.trainingMax * 0.745, barWeight, smallestPlate);
+      if (volRpe !== null && !isNaN(volRpe)) {
+        let newVolWeight = currentVolWeight;
+        if (volRpe <= 7) {
+          newVolWeight = roundToPlate(currentVolWeight + 5, barWeight, smallestPlate);
+        } else if (volRpe === 8) {
+          newVolWeight = roundToPlate(currentVolWeight + 2.5, barWeight, smallestPlate);
+        } else if (volRpe <= 9) {
+          // hold — no change
+        } else {
+          // RPE 10 → drop
+          newVolWeight = roundToPlate(currentVolWeight - 2.5, barWeight, smallestPlate);
+        }
+        d.volumeDayWeight = newVolWeight;
+      }
     }
 
     // Fail streak on heavy single only
@@ -2278,29 +2346,28 @@ function advanceDay() {
     d.dayQueue = Array.from({length: totalDays}, (_, i) => i + 1);
     d.currentDay = 1;
 
-    // Performance-derived TM advancement
-    if (newWeek % 4 !== 0) { // skip deload weeks
-      if (d.lastImplied1RM) {
-        // Derive target TM from actual performance
-        const targetTM = roundToPlate(d.lastImplied1RM * 0.90, d.settings.barWeight, d.settings.smallestPlate);
-        // Cap change at ±10 lbs per week to prevent whiplash
-        const maxJump = 10;
-        const change = Math.max(-maxJump, Math.min(maxJump, targetTM - d.trainingMax));
-        if (change > 0) {
-          d.trainingMax = roundToPlate(d.trainingMax + change, d.settings.barWeight, d.settings.smallestPlate);
-        } else if (change < 0) {
-          // Only drop if change is -5 or more, and only by half the suggested drop
-          if (change <= -5) {
-            d.trainingMax = roundToPlate(d.trainingMax + Math.ceil(change / 2), d.settings.barWeight, d.settings.smallestPlate);
-          }
+    // RPE-based TM advancement — clean and direct, no implied-1RM math
+    if (newWeek % 5 !== 0) { // skip deload weeks (every 5th week)
+      const rpe = d.lastSingleRPE;
+      if (rpe !== null && rpe !== undefined) {
+        // RPE ≤7: easy, big jump. RPE 8: target, normal jump. RPE 9+: hold or drop.
+        if (rpe <= 7) {
+          d.trainingMax = roundToPlate(d.trainingMax + 5, d.settings.barWeight, d.settings.smallestPlate);
+        } else if (rpe <= 8) {
+          d.trainingMax = roundToPlate(d.trainingMax + 2.5, d.settings.barWeight, d.settings.smallestPlate);
+        } else if (rpe <= 8.5) {
+          // borderline — hold
+        } else if (rpe <= 9) {
+          // hard grind — hold
+        } else {
+          // RPE 10 — drop 2.5
+          d.trainingMax = roundToPlate(d.trainingMax - 2.5, d.settings.barWeight, d.settings.smallestPlate);
         }
-        d.nextTMBonus = 0;
-      } else {
-        // No single logged yet (first week or missed single) — fall back to +2.5
-        const increment = 2.5;
-        d.trainingMax = roundToPlate(d.trainingMax + increment, d.settings.barWeight, d.settings.smallestPlate);
-        d.nextTMBonus = 0;
       }
+      // No single logged this week → hold TM steady. Never increment blindly on missing data.
+      d.nextTMBonus = 0;
+      d.lastSingleRPE = null;
+      d.lastImplied1RM = null;
     }
   } else {
     // Some days still unlogged — just update queue state to stay consistent
@@ -2318,8 +2385,27 @@ function advanceDay() {
 }
 
 function skipWorkout() {
-  if (confirm('Skip today and move to next workout?')) {
-    advanceDay();
+  if (!pendingSelectedDay) { cancelWorkout(); return; }
+  const dayNum = pendingSelectedDay;
+  if (confirm('Skip Day ' + dayNum + '? It will be marked as done for this week so you can still complete the week.')) {
+    const d = loadData();
+    d.workoutLogs.push({
+      week: d.currentWeek,
+      day: dayNum,
+      date: new Date().toISOString(),
+      skipped: true,
+      exercises: [],
+      failGuidance: [],
+      notes: '',
+    });
+    saveData(d);
+    pendingStatuses = {};
+    pendingNotes = '';
+    pendingEfforts = {};
+    pendingSelectedDay = null;
+    localStorage.removeItem('iron300_pending');
+    stopRestTimer();
+    renderToday();
   }
 }
 
@@ -2366,7 +2452,7 @@ function renderProgram() {
         <div class="stat-box"><div class="stat-box-val">${d.ohpWeight || 90}</div><div class="stat-box-label">OHP Weight (lbs)</div></div>
       </div>
       <div class="note-box">
-        <strong>Bench Progression:</strong> +2.5 lbs to training max each week. Every 4th week is a deload. The top single climbs from ~90% of TM in week 1, adding 2.5 lbs each week — this is your strength signal for the 300 lb goal.
+        <strong>Bench Progression:</strong> Training max (TM) advances by RPE: RPE ≤7 → +5 lbs, RPE 8 → +2.5 lbs, RPE 8.5–9 → hold, RPE 10 → −2.5 lbs. Every 5th week is a deload. The single equals your current TM — your actual performance drives the load, not a fixed weekly increment.
       </div>
       ${d.nextTMBonus !== undefined && d.nextTMBonus !== 0 ? `
       <div style="margin-top:10px; padding:10px 12px; border-radius:6px; border:1px solid ${d.nextTMBonus > 0 ? 'var(--blue)' : 'var(--accent2)'}; background:${d.nextTMBonus > 0 ? 'var(--blue)' : 'var(--accent2)'}15; font-size:13px">
@@ -2779,7 +2865,7 @@ function renderSchedule() {
     if (todayLog && count === 0) {
       // advance and try again
     } else {
-      const focusColors = { heavy: 'var(--accent)', volume: 'var(--blue)', speed: 'var(--green)', ohp: '#c084fc' };
+      const focusColors = { heavy: 'var(--accent)', volume: 'var(--blue)', paused: 'var(--green)', ohp: '#c084fc' };
       const focusLabel = { heavy: 'HEAVY', volume: 'VOLUME', speed: 'SPEED', ohp: 'OHP' };
       const color = focusColors[dayDef.benchFocus] || 'var(--muted)';
 
