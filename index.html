@@ -637,7 +637,10 @@
 <body>
 
 <div class="header">
-  <div class="logo">IRON <span>300</span></div>
+  <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
+    <div class="logo">IRON <span>300</span></div>
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:#555; letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.3</span>
+  </div>
   <div class="header-stats">
     <div class="hstat">
       <div class="hstat-label">Estimated 1RM</div>
@@ -771,15 +774,34 @@
   </div>
 
   <div class="card">
+    <div class="card-title">&#128247; Sync Between Devices</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.6">
+      Your data lives in this browser. To keep your phone and laptop in sync, export here and import on the other device after each session.
+    </p>
+    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap">
+      <button class="btn btn-secondary" id="export-btn" onclick="exportData()">&#128203; Copy My Data</button>
+      <button class="btn btn-secondary" onclick="toggleImportArea()">&#128229; Paste &amp; Import</button>
+    </div>
+    <div id="import-area" style="display:none">
+      <textarea id="import-json" class="form-input" rows="4" style="font-family:monospace; font-size:11px; resize:vertical; width:100%; box-sizing:border-box" placeholder="Paste your exported data here..."></textarea>
+      <div style="display:flex; gap:10px; margin-top:8px">
+        <button class="btn btn-primary" onclick="importData()">Import &amp; Reload</button>
+        <button class="btn btn-secondary" onclick="toggleImportArea()">Cancel</button>
+      </div>
+      <div id="import-status" style="margin-top:8px; font-size:13px; display:none"></div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-title">About This Program</div>
     <p style="font-size:14px; color: var(--muted); line-height:1.8">
-      <strong style="color:var(--text)">Day 1 — Heavy Bench (Weekend):</strong> A top single at RPE 7.5–8, then 4×5 back-offs at ~83%. This is your primary strength driver toward 300. The single weight climbs +2.5 lbs every week.<br><br>
-      <strong style="color:var(--text)">Day 2 — OHP (Monday):</strong> Overhead Press 4×5, climbing toward 4×8 before adding weight. OHP builds shoulder and tricep strength that carries directly to your bench.<br><br>
-      <strong style="color:var(--text)">Day 3 — Volume Bench (Wednesday):</strong> 4×6 at ~74% of training max. Builds work capacity and muscle. Weight increases +2.5 lbs each week alongside the heavy day.<br><br>
-      <strong style="color:var(--text)">Day 4 — Speed Bench (Thursday):</strong> 8×3 at 65% with 60–90s rest. Every rep is explosive. Speed work builds bar velocity and motor pattern — critical for the 300 lb single.<br><br>
-      <strong style="color:var(--text)">Hypertrophy:</strong> 4 sets of 1 exercise per muscle group (back, shoulders, biceps, triceps) each day = 16 sets/week per muscle. Weight progresses automatically when you hit the top of the rep range.<br><br>
-      <strong style="color:var(--text)">Deload (every 4th week):</strong> Weights drop to 60–70%. Recovery is when you actually grow stronger.<br><br>
-      <strong style="color:var(--text)">Failure Protocol:</strong> Miss the heavy single twice in a row → training max drops 10% and rebuilds. Assistance fails → hold weight, lower rep target before progressing again.
+      <strong style="color:var(--text)">Day 1 — Heavy Bench:</strong> Top single at your Training Max (TM). RPE after the single drives next week's TM: RPE ≤7 → +5 lbs, RPE 8 → +2.5 lbs, RPE 8.5–9 → hold, RPE 10 → −2.5 lbs. Four back-off sets at 85% TM follow.<br><br>
+      <strong style="color:var(--text)">Day 2 — Volume Bench:</strong> 4×6 at ~74% TM. Rate the last set RPE to auto-regulate next week's weight. Builds the work capacity and muscle to support the heavy single.<br><br>
+      <strong style="color:var(--text)">Day 3 — OHP:</strong> Overhead Press, 4×5 building toward 4×8 before adding weight. Keeps shoulders and triceps healthy and strong.<br><br>
+      <strong style="color:var(--text)">Day 4 — Paused Bench:</strong> 5×4 at 75% TM with a mandatory 2-second pause at the chest. Builds leg drive, starting strength, and positional control — the things that matter most at 90%+ of max.<br><br>
+      <strong style="color:var(--text)">Assistance:</strong> One rowing movement, one rear delt, one curl, one tricep isolation per day. Weight progresses automatically when you hit the top of the rep range across all sets.<br><br>
+      <strong style="color:var(--text)">Deload (every 5th week):</strong> Weights drop to 60–70%. This is when adaptation happens.<br><br>
+      <strong style="color:var(--text)">Failure Protocol:</strong> Miss the heavy single twice in a row → TM drops 10% and rebuilds. Assistance stalls → hold weight, adjust rep target.
     </p>
   </div>
 </div>
@@ -1280,7 +1302,7 @@ function showPage(name) {
   });
 
   switch(name) {
-    case 'today': renderToday(); break;
+    case 'today': pendingSelectedDay = null; renderToday(); break;
     case 'schedule': renderSchedule(); break;
     case 'program': renderProgram(); break;
     case 'graphs': renderGraphs(); break;
@@ -1372,6 +1394,43 @@ function startWorkout(dayNum) {
   renderToday();
 }
 
+function exportData() {
+  const data = localStorage.getItem('iron300_data');
+  if (!data) { alert('No data to export.'); return; }
+  navigator.clipboard.writeText(data).then(() => {
+    const btn = document.getElementById('export-btn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2500);
+  }).catch(() => { prompt('Copy this data:', data); });
+}
+
+function toggleImportArea() {
+  const area = document.getElementById('import-area');
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+function importData() {
+  const json = document.getElementById('import-json').value.trim();
+  const status = document.getElementById('import-status');
+  if (!json) {
+    status.style.display = 'block'; status.style.color = 'var(--accent2)';
+    status.textContent = 'Paste your data first.'; return;
+  }
+  try {
+    const parsed = JSON.parse(json);
+    if (!parsed.trainingMax && !parsed.settings) throw new Error('Not valid IRON 300 data');
+    localStorage.setItem('iron300_data', json);
+    status.style.display = 'block'; status.style.color = 'var(--green)';
+    status.textContent = '✓ Imported! Reloading...';
+    setTimeout(() => location.reload(), 1200);
+  } catch(e) {
+    status.style.display = 'block'; status.style.color = 'var(--accent2)';
+    status.textContent = 'Invalid data. Make sure you copied the full export.';
+  }
+}
+
 function cancelWorkout() {
   // If any sets have been marked, confirm before discarding
   const hasProgress = Object.keys(pendingStatuses).length > 0;
@@ -1437,7 +1496,7 @@ function renderToday() {
         <div style="color:var(--muted); font-size:13px">Week ${week} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
       </div>
       <div style="display:flex; gap:8px; align-items:center">
-        <button onclick="cancelWorkout()" style="background:transparent; border:none; color:var(--muted); font-size:12px; cursor:pointer; padding:4px 8px; border-radius:4px; border:1px solid var(--border)">← Change</button>
+        <button onclick="cancelWorkout()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; padding:6px 14px; border-radius:6px">← Select Day</button>
         ${week % 5 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
       </div>
     </div>`;
@@ -2447,7 +2506,7 @@ function renderProgram() {
       <div class="card-title">Current Training Block</div>
       <div class="stats-grid">
         <div class="stat-box"><div class="stat-box-val">${d.trainingMax}</div><div class="stat-box-label">Training Max (lbs)</div></div>
-        <div class="stat-box"><div class="stat-box-val">${d.estimated1RM || '—'}</div><div class="stat-box-label">Est. 1RM (lbs)</div></div>
+        <div class="stat-box"><div class="stat-box-val">${d.trainingMax ? Math.round(d.trainingMax / 0.935 / 5) * 5 : (d.estimated1RM || '—')}</div><div class="stat-box-label">Est. 1RM (lbs)</div></div>
         <div class="stat-box"><div class="stat-box-val">${d.currentWeek}</div><div class="stat-box-label">Current Week</div></div>
         <div class="stat-box"><div class="stat-box-val">${d.ohpWeight || 90}</div><div class="stat-box-label">OHP Weight (lbs)</div></div>
       </div>
@@ -2580,7 +2639,8 @@ function renderProgress() {
   }
 
   const goal = d.settings.goal;
-  const current1RM = d.estimated1RM || 0;
+  // Derive current e1RM live from TM — more accurate than stored historical peak
+  const current1RM = d.trainingMax ? Math.round(d.trainingMax / 0.935 / 5) * 5 : (d.estimated1RM || 0);
   const pctToGoal = Math.min(100, Math.round(current1RM / goal * 100));
 
   // Calculate 1RM history from bench logs
@@ -2801,8 +2861,8 @@ function renderSettings() {
 
 function updateHeader() {
   const d = loadData();
-  // Use lastImplied1RM if available (from logged RPE), fall back to estimated1RM
-  const rm = d.lastImplied1RM || d.estimated1RM;
+  // Derive e1RM live from TM so it stays current (not a historical peak)
+  const rm = d.trainingMax ? Math.round(d.trainingMax / 0.935 / 5) * 5 : d.estimated1RM;
   const goal = d.settings?.goal || 300;
 
   const rmEl = document.getElementById('header-1rm');
