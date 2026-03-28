@@ -774,25 +774,6 @@
   </div>
 
   <div class="card">
-    <div class="card-title">&#128247; Sync Between Devices</div>
-    <p style="font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.6">
-      Your data lives in this browser. To keep your phone and laptop in sync, export here and import on the other device after each session.
-    </p>
-    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap">
-      <button class="btn btn-secondary" id="export-btn" onclick="exportData()">&#128203; Copy My Data</button>
-      <button class="btn btn-secondary" onclick="toggleImportArea()">&#128229; Paste &amp; Import</button>
-    </div>
-    <div id="import-area" style="display:none">
-      <textarea id="import-json" class="form-input" rows="4" style="font-family:monospace; font-size:11px; resize:vertical; width:100%; box-sizing:border-box" placeholder="Paste your exported data here..."></textarea>
-      <div style="display:flex; gap:10px; margin-top:8px">
-        <button class="btn btn-primary" onclick="importData()">Import &amp; Reload</button>
-        <button class="btn btn-secondary" onclick="toggleImportArea()">Cancel</button>
-      </div>
-      <div id="import-status" style="margin-top:8px; font-size:13px; display:none"></div>
-    </div>
-  </div>
-
-  <div class="card">
     <div class="card-title">About This Program</div>
     <p style="font-size:14px; color: var(--muted); line-height:1.8">
       <strong style="color:var(--text)">Day 1 — Heavy Bench:</strong> Top single at your Training Max (TM). RPE after the single drives next week's TM: RPE ≤7 → +5 lbs, RPE 8 → +2.5 lbs, RPE 8.5–9 → hold, RPE 10 → −2.5 lbs. Four back-off sets at 85% TM follow.<br><br>
@@ -1392,43 +1373,6 @@ function startWorkout(dayNum) {
     statuses: {}, efforts: {}, notes: '', selectedDay: dayNum
   }));
   renderToday();
-}
-
-function exportData() {
-  const data = localStorage.getItem('iron300_data');
-  if (!data) { alert('No data to export.'); return; }
-  navigator.clipboard.writeText(data).then(() => {
-    const btn = document.getElementById('export-btn');
-    const orig = btn.textContent;
-    btn.textContent = '✓ Copied!';
-    btn.style.color = 'var(--green)';
-    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2500);
-  }).catch(() => { prompt('Copy this data:', data); });
-}
-
-function toggleImportArea() {
-  const area = document.getElementById('import-area');
-  area.style.display = area.style.display === 'none' ? 'block' : 'none';
-}
-
-function importData() {
-  const json = document.getElementById('import-json').value.trim();
-  const status = document.getElementById('import-status');
-  if (!json) {
-    status.style.display = 'block'; status.style.color = 'var(--accent2)';
-    status.textContent = 'Paste your data first.'; return;
-  }
-  try {
-    const parsed = JSON.parse(json);
-    if (!parsed.trainingMax && !parsed.settings) throw new Error('Not valid IRON 300 data');
-    localStorage.setItem('iron300_data', json);
-    status.style.display = 'block'; status.style.color = 'var(--green)';
-    status.textContent = '✓ Imported! Reloading...';
-    setTimeout(() => location.reload(), 1200);
-  } catch(e) {
-    status.style.display = 'block'; status.style.color = 'var(--accent2)';
-    status.textContent = 'Invalid data. Make sure you copied the full export.';
-  }
 }
 
 function cancelWorkout() {
