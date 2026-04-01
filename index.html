@@ -2092,12 +2092,9 @@ function logWorkout() {
           d.ohpRepsPerSet = 5;
         }
       } else {
-        // Add 1 rep to target per session (or less if hard)
-        if (effortPattern === 'hard') {
-          d.ohpRepsPerSet = Math.max(5, (d.ohpRepsPerSet || 5) - 1);
-        } else {
-          d.ohpRepsPerSet = Math.min(8, (d.ohpRepsPerSet || 5) + 1);
-        }
+        // Next target = what you actually did + 1, capped at 8.
+        // e.g. did 7 → next is 8. Did 5 → next is 6. Simple, honest progression.
+        d.ohpRepsPerSet = Math.min(8, Math.round(avgReps) + 1);
       }
     }
 
