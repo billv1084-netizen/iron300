@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="legs-manifest.json">
+<link rel="apple-touch-icon" href="legs-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Legs? Whatever.">
+<meta name="theme-color" content="#1A44C8">
+<title>Legs? I guess. Whatever.</title>
+<style>
+  :root {
+    --bg:          #F0EFED;
+    --surface:     #FFFFFF;
+    --surface2:    #F5F4F2;
+    --border:      #E2E1DE;
+    --accent:      #1A44C8;
+    --text:        #1A1A1A;
+    --muted:       #6B7280;
+    --light-muted: #9CA3AF;
+    --blue-grey:   #5B6B8A;
+    --cobalt-tint: #EEF1FB;
+    --green:       #16A34A;
+    --green-tint:  #F0FDF4;
+    --green-border:#BBF7D0;
+    --red:         #EF4444;
+    --red-tint:    #FEF2F2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .logo-wrap { display: flex; align-items: center; gap: 0; line-height: 1; }
+
+  .logo {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+    color: var(--accent);
+  }
+  .logo-muted {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+    color: var(--blue-grey);
+  }
+
+  .version-tag {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--blue-grey);
+    background: var(--cobalt-tint);
+    border: 1px solid rgba(26,68,200,0.15);
+    border-radius: 20px;
+    padding: 2px 7px;
+    letter-spacing: 0.5px;
+    align-self: center;
+    margin-left: 10px;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    padding: 0 16px;
+  }
+  .nav-btn {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--blue-grey);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Pages ── */
+  .page { display: none; padding: 20px 16px 60px; max-width: 680px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--light-muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Workout picker cards ── */
+  .workout-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 20px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .workout-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(26,68,200,0.1); }
+
+  .wc-name { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .wc-detail { font-size: 13px; color: var(--blue-grey); }
+  .wc-weight { font-size: 26px; font-weight: 800; color: var(--accent); text-align: right; }
+  .wc-weight-label { font-size: 11px; color: var(--light-muted); text-align: right; }
+  .wc-arrow { font-size: 22px; color: var(--border); margin-left: 12px; }
+
+  /* ── Workout view ── */
+  .workout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .ex-title { font-size: 24px; font-weight: 800; color: var(--text); }
+  .ex-meta  { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .ex-meta strong { color: var(--accent); }
+
+  .badge {
+    display: inline-block;
+    background: var(--cobalt-tint);
+    color: var(--accent);
+    border: 1px solid rgba(26,68,200,0.25);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* ── Info box ── */
+  .info-box {
+    background: var(--cobalt-tint);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+  .info-box strong { color: var(--accent); }
+
+  /* ── Sets table ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--blue-grey);
+    margin: 14px 0 10px;
+  }
+
+  .sets-header {
+    display: grid;
+    grid-template-columns: 50px 1fr 1fr 150px;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--light-muted);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--bg);
+    margin-bottom: 6px;
+  }
+
+  .set-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 1fr 150px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #F7F6F4;
+  }
+  .set-row:last-child { border-bottom: none; }
+
+  .set-num { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+  .set-input {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+    width: 100%;
+  }
+  .set-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+
+  .set-status { display: flex; gap: 4px; }
+  .status-btn {
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--light-muted);
+    transition: all 0.12s;
+  }
+  .status-btn.done { background: var(--cobalt-tint); border-color: var(--accent); color: var(--accent); }
+  .status-btn.fail { background: var(--red-tint);    border-color: var(--red);    color: var(--red); }
+
+  /* ── RPE selector ── */
+  .rpe-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .rpe-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .rpe-btn {
+    padding: 6px 11px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--muted);
+    transition: all 0.12s;
+  }
+  .rpe-btn.active { background: var(--cobalt-tint); border-color: var(--accent); color: var(--accent); }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 13px 28px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #1538A8; }
+  .btn-primary:disabled { background: var(--light-muted); cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--blue-grey);
+    border: 1.5px solid var(--blue-grey);
+    padding: 11px 22px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--blue-grey);
+    border: 1.5px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .flex-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .divider  { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── Progress / next-weight note ── */
+  .next-weight-box {
+    background: var(--green-tint);
+    border: 1px solid var(--green-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #15803D;
+    margin-top: 14px;
+    display: none;
+  }
+  .hold-box {
+    background: var(--cobalt-tint);
+    border: 1px solid rgba(26,68,200,0.2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--accent);
+    margin-top: 14px;
+    display: none;
+  }
+  .down-box {
+    background: var(--red-tint);
+    border: 1px solid #FECACA;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--red);
+    margin-top: 14px;
+    display: none;
+  }
+
+  /* ── History ── */
+  .history-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .history-date   { font-size: 11px; color: var(--light-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+  .history-ex     { font-size: 15px; font-weight: 800; color: var(--text); margin: 4px 0; }
+  .history-detail { font-size: 13px; color: var(--blue-grey); }
+  .history-rpe    { display: inline-block; background: var(--cobalt-tint); color: var(--accent); border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700; margin-left: 8px; }
+
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .empty-icon  { font-size: 48px; margin-bottom: 12px; }
+  .empty-text  { font-size: 15px; }
+
+  /* ── Stats strip ── */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-val   { font-size: 22px; font-weight: 800; color: var(--accent); }
+  .stat-val.secondary { color: var(--blue-grey); }
+  .stat-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--light-muted); margin-top: 4px; }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 10px 14px;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+
+  .sync-status { margin-top: 10px; font-size: 13px; display: none; }
+  .sync-status.success { color: var(--green); }
+  .sync-status.error   { color: var(--red); }
+  .sync-status.info    { color: var(--accent); }
+
+  @media (max-width: 480px) {
+    .sets-header, .set-row { grid-template-columns: 40px 1fr 1fr 130px; }
+    .wc-weight { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-wrap">
+    <span class="logo">LEGS?&nbsp;</span><span class="logo-muted">I guess.&nbsp;</span><span class="logo">Whatever.</span>
+    <span class="version-tag">v1.0</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="showPage('today')">Today</button>
+  <button class="nav-btn" onclick="showPage('history')">History</button>
+  <button class="nav-btn" onclick="showPage('settings')">Settings</button>
+</div>
+
+<!-- ══ TODAY PAGE ══════════════════════════════════════════════ -->
+<div id="page-today" class="page active">
+  <div id="today-content"></div>
+</div>
+
+<!-- ══ HISTORY PAGE ════════════════════════════════════════════ -->
+<div id="page-history" class="page">
+  <div id="history-content"></div>
+</div>
+
+<!-- ══ SETTINGS PAGE ═══════════════════════════════════════════ -->
+<div id="page-settings" class="page">
+
+  <div class="card" id="github-sync-card">
+    <div class="card-title">☁️ GitHub Sync</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6">
+      Same repo as IRON 300. Your data saves as <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:12px">legs_data.json</code> — separate from your bench data.
+    </p>
+    <div class="form-group">
+      <label class="form-label">GitHub Personal Access Token</label>
+      <input class="form-input" type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" />
+      <div style="font-size:11px; color:var(--muted); margin-top:4px">Same token you use for IRON 300.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">GitHub Username</label>
+      <input class="form-input" type="text" id="gh-user" placeholder="e.g. billv1084-netizen" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Repository Name</label>
+      <input class="form-input" type="text" id="gh-repo" placeholder="e.g. iron300" />
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+      <button class="btn-primary" onclick="saveGithubSettings()" style="font-size:13px;padding:10px 18px">Save Settings</button>
+      <button class="btn-secondary" onclick="syncFromGithub()" style="font-size:13px;padding:9px 16px">↓ Pull from GitHub</button>
+      <button class="btn-secondary" onclick="syncToGithub(true)" style="font-size:13px;padding:9px 16px">↑ Push to GitHub</button>
+    </div>
+    <div id="sync-status" class="sync-status"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Equipment</div>
+    <div class="form-group">
+      <label class="form-label">Hack Squat Smallest Plate (lbs)</label>
+      <input class="form-input" type="number" id="smallest-plate" value="2.5" step="0.5" min="1" />
+      <div style="font-size:11px; color:var(--muted); margin-top:4px">Min jump = 2× this value (one plate each side).</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Leg Curl Machine Increment (lbs)</label>
+      <input class="form-input" type="number" id="curl-increment" value="5" step="5" min="5" />
+    </div>
+    <button class="btn-primary" onclick="saveEquipmentSettings()" style="font-size:13px;padding:10px 18px">Save</button>
+    <div id="equip-status" style="margin-top:8px; font-size:13px; display:none; color:var(--green)"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Reset Data</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6">
+      Reset weights to starting values. Your history is preserved — only the current working weights reset.
+    </p>
+    <button class="btn-secondary" onclick="resetWeights()" style="border-color:var(--red);color:var(--red)">Reset Working Weights</button>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════════════════════
+const DATA_KEY = 'legs_data';
+
+function defaultData() {
+  return {
+    hackSquat: { weight: 10,  sessions: [] },
+    legCurl:   { weight: 55,  sessions: [] },
+    settings:  { smallestPlate: 2.5, legCurlIncrement: 5 },
+    ghToken: '', ghUser: '', ghRepo: ''
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(DATA_KEY);
+    if (!raw) return defaultData();
+    const d = JSON.parse(raw);
+    // Ensure all keys exist
+    if (!d.hackSquat)  d.hackSquat  = { weight: 10, sessions: [] };
+    if (!d.legCurl)    d.legCurl    = { weight: 55, sessions: [] };
+    if (!d.settings)   d.settings   = { smallestPlate: 2.5, legCurlIncrement: 5 };
+    if (!d.ghToken)    d.ghToken    = '';
+    if (!d.ghUser)     d.ghUser     = '';
+    if (!d.ghRepo)     d.ghRepo     = '';
+    return d;
+  } catch(e) { return defaultData(); }
+}
+
+function saveData(d) {
+  localStorage.setItem(DATA_KEY, JSON.stringify(d));
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════════════════════════
+let activePage = 'today';
+let activeWorkout = null; // 'hackSquat' | 'legCurl' | null
+let setStatuses = {};     // { setIndex: 'done'|'fail' }
+let selectedRPE = null;
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector(`.nav-btn[onclick="showPage('${name}')"]`).classList.add('active');
+  activePage = name;
+  if (name === 'today') {
+    activeWorkout = null;
+    setStatuses = {};
+    selectedRPE = null;
+    renderToday();
+  }
+  if (name === 'history') renderHistory();
+  if (name === 'settings') renderSettings();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TODAY
+// ══════════════════════════════════════════════════════════════
+function renderToday() {
+  const d = loadData();
+  const el = document.getElementById('today-content');
+
+  if (!activeWorkout) {
+    // Picker
+    const sqSessions = d.hackSquat.sessions.length;
+    const curlSessions = d.legCurl.sessions.length;
+    const lastSq   = sqSessions   ? new Date(d.hackSquat.sessions[sqSessions-1].date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'No sessions yet';
+    const lastCurl = curlSessions ? new Date(d.legCurl.sessions[curlSessions-1].date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'No sessions yet';
+
+    el.innerHTML = `
+      <div style="margin-bottom:20px">
+        <div style="font-size:22px; font-weight:800; color:var(--text); margin-bottom:4px">What are we doing today?</div>
+        <div style="font-size:13px; color:var(--muted)">Pick one. No pressure. You've got this.</div>
+      </div>
+
+      <div class="workout-card" onclick="startWorkout('hackSquat')">
+        <div>
+          <div class="wc-name">Hack Squat</div>
+          <div class="wc-detail">5×5 · RPE-based · Last: ${lastSq}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div>
+            <div class="wc-weight">${d.hackSquat.weight}</div>
+            <div class="wc-weight-label">lbs added</div>
+          </div>
+          <div class="wc-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="workout-card" onclick="startWorkout('legCurl')">
+        <div>
+          <div class="wc-name">Lying Leg Curl</div>
+          <div class="wc-detail">3×8–12 · Hit ceiling, move up · Last: ${lastCurl}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div>
+            <div class="wc-weight">${d.legCurl.weight}</div>
+            <div class="wc-weight-label">lbs</div>
+          </div>
+          <div class="wc-arrow">›</div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px; font-size:12px; color:var(--light-muted); text-align:center">
+        Hack Squat: ${sqSessions} session${sqSessions !== 1 ? 's' : ''} logged &nbsp;·&nbsp; Leg Curl: ${curlSessions} session${curlSessions !== 1 ? 's' : ''} logged
+      </div>
+    `;
+    return;
+  }
+
+  if (activeWorkout === 'hackSquat') renderHackSquat(d);
+  if (activeWorkout === 'legCurl')   renderLegCurl(d);
+}
+
+function startWorkout(type) {
+  activeWorkout = type;
+  setStatuses = {};
+  selectedRPE = null;
+  renderToday();
+}
+
+// ── Hack Squat ────────────────────────────────────────────────
+function renderHackSquat(d) {
+  const w = d.hackSquat.weight;
+  const el = document.getElementById('today-content');
+
+  let setsHtml = '';
+  for (let i = 0; i < 5; i++) {
+    const status = setStatuses[i] || '';
+    const doneCls = status === 'done' ? 'done' : '';
+    const failCls = status === 'fail' ? 'fail' : '';
+    setsHtml += `
+      <div class="set-row">
+        <div class="set-num">${i + 1}</div>
+        <input class="set-input" type="number" id="sq-w-${i}" value="${w}" min="0" step="5">
+        <input class="set-input" type="number" id="sq-r-${i}" value="5" min="0" max="20">
+        <div class="set-status">
+          <button class="status-btn ${doneCls}" id="sq-done-${i}" onclick="toggleHackStatus(${i},'done')">Done</button>
+          <button class="status-btn ${failCls}" id="sq-fail-${i}" onclick="toggleHackStatus(${i},'fail')">Fail</button>
+        </div>
+      </div>`;
+  }
+
+  const rpeButtons = ['6','7','8','8.5','9','10'].map(r =>
+    `<button class="rpe-btn${selectedRPE === r ? ' active' : ''}" onclick="selectRPE('${r}')">${r}</button>`
+  ).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <button class="btn-ghost" onclick="activeWorkout=null;setStatuses={};selectedRPE=null;renderToday()">← Back</button>
+      <span class="badge">5×5 Hack Squat</span>
+    </div>
+
+    <div class="card">
+      <div class="ex-title">Hack Squat</div>
+      <div class="ex-meta">Working weight: <strong>${w} lbs added</strong> · Not counting the sled</div>
+
+      <div class="info-box" style="margin-top:14px">
+        <strong>Progression:</strong> Rate the last set RPE. ≤8 → +5 lbs next session. 8.5–9 → hold. 10 → −5 lbs. You don't need to go heavy — you need to go consistently.
+      </div>
+
+      <div class="section-label">Warmup</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--blue-grey)">Sled only × 8 <span style="font-size:10px;color:var(--light-muted);margin-left:4px">light, feel it out</span></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--blue-grey)">${Math.round(w*0.5/5)*5} lbs × 5 <span style="font-size:10px;color:var(--light-muted);margin-left:4px">then work sets</span></div>
+      </div>
+
+      <div class="section-label">Work Sets — 5 × 5</div>
+      <div class="sets-header">
+        <div>Set</div><div>Weight</div><div>Reps</div><div>Status</div>
+      </div>
+      ${setsHtml}
+
+      <hr class="divider">
+
+      <div class="rpe-row">
+        <div class="rpe-label">Last set RPE:</div>
+        ${rpeButtons}
+      </div>
+
+      <div id="progression-note" style="margin-top:12px"></div>
+    </div>
+
+    <div class="flex-row" style="margin-top:4px">
+      <button class="btn-primary" style="flex:1" onclick="logHackSquat()">Log Workout</button>
+      <button class="btn-secondary" onclick="activeWorkout=null;setStatuses={};selectedRPE=null;renderToday()">Cancel</button>
+    </div>
+  `;
+}
+
+function toggleHackStatus(idx, type) {
+  if (setStatuses[idx] === type) {
+    delete setStatuses[idx];
+  } else {
+    setStatuses[idx] = type;
+  }
+  // Re-render just the buttons
+  ['done','fail'].forEach(t => {
+    const btn = document.getElementById(`sq-${t}-${idx}`);
+    if (btn) btn.className = 'status-btn' + (setStatuses[idx] === t ? ' ' + t : '');
+  });
+}
+
+function selectRPE(val) {
+  selectedRPE = val;
+  document.querySelectorAll('.rpe-btn').forEach(b => {
+    b.className = 'rpe-btn' + (b.textContent === val ? ' active' : '');
+  });
+  // Show progression note
+  const note = document.getElementById('progression-note');
+  const d = loadData();
+  const w = d.hackSquat.weight;
+  const sp = d.settings.smallestPlate;
+  const minJump = sp * 2;
+  const rpe = parseFloat(val);
+  let html = '';
+  if (rpe <= 8) {
+    const next = w + minJump;
+    html = `<div class="next-weight-box" style="display:block">↑ Next session: <strong>${next} lbs added</strong> — moving up ${minJump} lbs. Nice work.</div>`;
+  } else if (rpe <= 9) {
+    html = `<div class="hold-box" style="display:block">→ Next session: <strong>${w} lbs added</strong> — holding here. That was hard. Respect it.</div>`;
+  } else {
+    const next = Math.max(0, w - minJump);
+    html = `<div class="down-box" style="display:block">↓ Next session: <strong>${next} lbs added</strong> — backing off ${minJump} lbs. Smart call.</div>`;
+  }
+  note.innerHTML = html;
+}
+
+function logHackSquat() {
+  if (selectedRPE === null) {
+    alert('Please select an RPE before logging.');
+    return;
+  }
+  const d = loadData();
+  const w = d.hackSquat.weight;
+  const sp = d.settings.smallestPlate;
+  const minJump = sp * 2;
+  const rpe = parseFloat(selectedRPE);
+
+  // Collect sets
+  const sets = [];
+  for (let i = 0; i < 5; i++) {
+    const wt = parseFloat(document.getElementById(`sq-w-${i}`).value) || w;
+    const reps = parseInt(document.getElementById(`sq-r-${i}`).value) || 0;
+    const status = setStatuses[i] || 'done';
+    sets.push({ weight: wt, reps, status });
+  }
+
+  // Update weight based on RPE
+  let newWeight = w;
+  if (rpe <= 8)       newWeight = w + minJump;
+  else if (rpe <= 9)  newWeight = w;
+  else                newWeight = Math.max(0, w - minJump);
+
+  // Save session
+  d.hackSquat.sessions.push({
+    date: new Date().toISOString(),
+    sets,
+    rpe: selectedRPE,
+    weightUsed: w,
+  });
+  d.hackSquat.weight = newWeight;
+  saveData(d);
+
+  // Auto-sync if configured
+  if (d.ghToken && d.ghUser && d.ghRepo) syncToGithub(false);
+
+  // Return to picker
+  activeWorkout = null;
+  setStatuses = {};
+  selectedRPE = null;
+
+  // Show success
+  const el = document.getElementById('today-content');
+  const dir = newWeight > w ? '↑' : newWeight < w ? '↓' : '→';
+  el.innerHTML = `
+    <div class="card" style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:12px">💪</div>
+      <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px">Hack Squat done.</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:20px">
+        ${w} lbs · RPE ${selectedRPE || rpe}<br>
+        Next session: <strong style="color:var(--accent)">${newWeight} lbs ${dir}</strong>
+      </div>
+      <button class="btn-primary" onclick="activeWorkout=null;renderToday()">Back to Today</button>
+    </div>`;
+}
+
+// ── Leg Curl ──────────────────────────────────────────────────
+function renderLegCurl(d) {
+  const w = d.legCurl.weight;
+  const el = document.getElementById('today-content');
+
+  let setsHtml = '';
+  for (let i = 0; i < 3; i++) {
+    const status = setStatuses[i] || '';
+    setsHtml += `
+      <div class="set-row">
+        <div class="set-num">${i + 1}</div>
+        <input class="set-input" type="number" id="curl-w-${i}" value="${w}" min="0" step="5">
+        <input class="set-input" type="number" id="curl-r-${i}" value="" min="0" max="30" placeholder="—">
+        <div class="set-status">
+          <button class="status-btn${status === 'done' ? ' done' : ''}" id="curl-done-${i}" onclick="toggleCurlStatus(${i},'done')">Done</button>
+          <button class="status-btn${status === 'fail' ? ' fail' : ''}" id="curl-fail-${i}" onclick="toggleCurlStatus(${i},'fail')">Fail</button>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <button class="btn-ghost" onclick="activeWorkout=null;setStatuses={};renderToday()">← Back</button>
+      <span class="badge">Lying Leg Curl</span>
+    </div>
+
+    <div class="card">
+      <div class="ex-title">Lying Leg Curl</div>
+      <div class="ex-meta">Working weight: <strong>${w} lbs</strong></div>
+
+      <div class="info-box" style="margin-top:14px">
+        <strong>Progression:</strong> Target 8–12 reps per set. Hit 12 on <em>all 3 sets</em> → add weight next session. Any set under 8 → drop weight. Otherwise hold. Full range of motion — stretch at the bottom counts.
+      </div>
+
+      <div class="section-label">Sets — 3 × 8–12</div>
+      <div class="sets-header">
+        <div>Set</div><div>Weight</div><div>Reps</div><div>Status</div>
+      </div>
+      ${setsHtml}
+
+      <div id="curl-note" style="margin-top:12px"></div>
+    </div>
+
+    <div class="flex-row" style="margin-top:4px">
+      <button class="btn-primary" style="flex:1" onclick="logLegCurl()">Log Workout</button>
+      <button class="btn-secondary" onclick="activeWorkout=null;setStatuses={};renderToday()">Cancel</button>
+    </div>
+  `;
+
+  // Live note as reps are entered
+  for (let i = 0; i < 3; i++) {
+    document.getElementById(`curl-r-${i}`).addEventListener('input', updateCurlNote);
+  }
+}
+
+function toggleCurlStatus(idx, type) {
+  if (setStatuses[idx] === type) {
+    delete setStatuses[idx];
+  } else {
+    setStatuses[idx] = type;
+  }
+  ['done','fail'].forEach(t => {
+    const btn = document.getElementById(`curl-${t}-${idx}`);
+    if (btn) btn.className = 'status-btn' + (setStatuses[idx] === t ? ' ' + t : '');
+  });
+  updateCurlNote();
+}
+
+function updateCurlNote() {
+  const note = document.getElementById('curl-note');
+  if (!note) return;
+  const d = loadData();
+  const w = d.legCurl.weight;
+  const inc = d.settings.legCurlIncrement;
+
+  const reps = [0,1,2].map(i => {
+    const el = document.getElementById(`curl-r-${i}`);
+    return el ? parseInt(el.value) || 0 : 0;
+  });
+
+  const allEntered = reps.every(r => r > 0);
+  if (!allEntered) { note.innerHTML = ''; return; }
+
+  const allHitCeiling = reps.every(r => r >= 12);
+  const anyTooLow     = reps.some(r => r < 8);
+
+  if (allHitCeiling) {
+    note.innerHTML = `<div class="next-weight-box" style="display:block">↑ All sets hit 12+ — next session: <strong>${w + inc} lbs</strong>. Keep climbing.</div>`;
+  } else if (anyTooLow) {
+    note.innerHTML = `<div class="down-box" style="display:block">↓ A set fell under 8 reps — next session: <strong>${Math.max(0, w - inc)} lbs</strong>. Nothing wrong with stepping back.</div>`;
+  } else {
+    note.innerHTML = `<div class="hold-box" style="display:block">→ Good work — next session: <strong>${w} lbs</strong>. Stay here until you own all three sets at 12.</div>`;
+  }
+}
+
+function logLegCurl() {
+  const d = loadData();
+  const w = d.legCurl.weight;
+  const inc = d.settings.legCurlIncrement;
+
+  const reps = [0,1,2].map(i => {
+    const el = document.getElementById(`curl-r-${i}`);
+    return el ? parseInt(el.value) || 0 : 0;
+  });
+
+  if (reps.every(r => r === 0)) {
+    alert('Enter your reps before logging.');
+    return;
+  }
+
+  const sets = [0,1,2].map(i => ({
+    weight: parseFloat(document.getElementById(`curl-w-${i}`).value) || w,
+    reps: reps[i],
+    status: setStatuses[i] || 'done'
+  }));
+
+  const allHitCeiling = reps.every(r => r >= 12);
+  const anyTooLow     = reps.some(r => r < 8);
+  let newWeight = w;
+  if (allHitCeiling)  newWeight = w + inc;
+  else if (anyTooLow) newWeight = Math.max(0, w - inc);
+
+  d.legCurl.sessions.push({
+    date: new Date().toISOString(),
+    sets,
+    weightUsed: w,
+  });
+  d.legCurl.weight = newWeight;
+  saveData(d);
+
+  if (d.ghToken && d.ghUser && d.ghRepo) syncToGithub(false);
+
+  activeWorkout = null;
+  setStatuses = {};
+
+  const dir = newWeight > w ? '↑' : newWeight < w ? '↓' : '→';
+  const el = document.getElementById('today-content');
+  el.innerHTML = `
+    <div class="card" style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:12px">🦵</div>
+      <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px">Leg curl done.</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:20px">
+        ${w} lbs · Sets: ${reps.join(' / ')} reps<br>
+        Next session: <strong style="color:var(--accent)">${newWeight} lbs ${dir}</strong>
+      </div>
+      <button class="btn-primary" onclick="activeWorkout=null;renderToday()">Back to Today</button>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════════════════════════
+function renderHistory() {
+  const d = loadData();
+  const el = document.getElementById('history-content');
+
+  // Merge and sort all sessions newest-first
+  const all = [
+    ...d.hackSquat.sessions.map(s => ({ ...s, type: 'hackSquat' })),
+    ...d.legCurl.sessions.map(s => ({ ...s, type: 'legCurl' })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (all.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No sessions logged yet.<br>Get after it.</div></div>`;
+    return;
+  }
+
+  // Stats
+  const sqCount   = d.hackSquat.sessions.length;
+  const curlCount = d.legCurl.sessions.length;
+
+  let html = `
+    <div class="stats-strip">
+      <div class="stat-box">
+        <div class="stat-val">${d.hackSquat.weight}</div>
+        <div class="stat-label">Squat lbs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val secondary">${d.legCurl.weight}</div>
+        <div class="stat-label">Curl lbs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">${sqCount + curlCount}</div>
+        <div class="stat-label">Sessions</div>
+      </div>
+    </div>`;
+
+  all.forEach(s => {
+    const date = new Date(s.date).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const name = s.type === 'hackSquat' ? 'Hack Squat' : 'Lying Leg Curl';
+    let detail = '';
+    if (s.type === 'hackSquat') {
+      const repsStr = s.sets.map(set => set.reps).join('-');
+      detail = `${s.weightUsed} lbs added · ${repsStr} reps`;
+    } else {
+      const repsStr = s.sets.map(set => set.reps).join(' / ');
+      detail = `${s.weightUsed} lbs · ${repsStr} reps`;
+    }
+    const rpeTag = s.rpe ? `<span class="history-rpe">RPE ${s.rpe}</span>` : '';
+    html += `
+      <div class="history-item">
+        <div class="history-date">${date}</div>
+        <div class="history-ex">${name}${rpeTag}</div>
+        <div class="history-detail">${detail}</div>
+      </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════════════════
+function renderSettings() {
+  const d = loadData();
+  const tokenEl = document.getElementById('gh-token');
+  const userEl  = document.getElementById('gh-user');
+  const repoEl  = document.getElementById('gh-repo');
+  const plateEl = document.getElementById('smallest-plate');
+  const curlEl  = document.getElementById('curl-increment');
+  if (tokenEl && d.ghToken) tokenEl.value = d.ghToken;
+  if (userEl  && d.ghUser)  userEl.value  = d.ghUser;
+  if (repoEl  && d.ghRepo)  repoEl.value  = d.ghRepo;
+  if (plateEl) plateEl.value = d.settings.smallestPlate;
+  if (curlEl)  curlEl.value  = d.settings.legCurlIncrement;
+}
+
+function saveGithubSettings() {
+  const d = loadData();
+  d.ghToken = document.getElementById('gh-token').value.trim();
+  d.ghUser  = document.getElementById('gh-user').value.trim();
+  d.ghRepo  = document.getElementById('gh-repo').value.trim();
+  saveData(d);
+  showSyncStatus('Settings saved.', 'success');
+}
+
+function saveEquipmentSettings() {
+  const d = loadData();
+  d.settings.smallestPlate    = parseFloat(document.getElementById('smallest-plate').value) || 2.5;
+  d.settings.legCurlIncrement = parseFloat(document.getElementById('curl-increment').value) || 5;
+  saveData(d);
+  const s = document.getElementById('equip-status');
+  s.style.display = 'block';
+  s.textContent = '✓ Saved.';
+  setTimeout(() => s.style.display = 'none', 2000);
+}
+
+function resetWeights() {
+  if (!confirm('Reset working weights to defaults? History is preserved.')) return;
+  const d = loadData();
+  d.hackSquat.weight = 10;
+  d.legCurl.weight   = 55;
+  saveData(d);
+  alert('Weights reset. Hack Squat → 10 lbs, Leg Curl → 55 lbs.');
+}
+
+function showSyncStatus(msg, type) {
+  const el = document.getElementById('sync-status');
+  el.textContent = msg;
+  el.className = 'sync-status ' + type;
+  el.style.display = 'block';
+  if (type === 'success') setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function getGithubConfig() {
+  const d = loadData();
+  return { token: d.ghToken, user: d.ghUser, repo: d.ghRepo };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GITHUB SYNC
+// ══════════════════════════════════════════════════════════════
+async function syncToGithub(showFeedback) {
+  const { token, user, repo } = getGithubConfig();
+  if (!token || !user || !repo) {
+    if (showFeedback) showSyncStatus('Set up GitHub sync in Settings first.', 'error');
+    return false;
+  }
+  try {
+    const data = localStorage.getItem(DATA_KEY);
+    if (!data) { if (showFeedback) showSyncStatus('No local data to push.', 'error'); return false; }
+
+    const bytes  = new TextEncoder().encode(data);
+    const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
+    const content = btoa(binary);
+    const filePath = 'legs_data.json';
+    const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/${filePath}`;
+
+    const headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' };
+    const getRes = await fetch(apiUrl, { headers });
+    let sha = null;
+    if (getRes.ok) sha = (await getRes.json()).sha;
+
+    const body = { message: 'legs sync ' + new Date().toISOString().slice(0,16).replace('T',' '), content };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (putRes.ok) {
+      if (showFeedback) showSyncStatus('↑ Pushed to GitHub at ' + new Date().toLocaleTimeString(), 'success');
+      return true;
+    } else {
+      const err = await putRes.json();
+      if (showFeedback) showSyncStatus('✗ Push failed: ' + (err.message || putRes.status), 'error');
+      return false;
+    }
+  } catch(e) {
+    if (showFeedback) showSyncStatus('✗ Error: ' + e.message, 'error');
+    return false;
+  }
+}
+
+async function syncFromGithub() {
+  const { token, user, repo } = getGithubConfig();
+  if (!token || !user || !repo) { showSyncStatus('Set up GitHub sync in Settings first.', 'error'); return; }
+  showSyncStatus('Pulling from GitHub...', 'info');
+  try {
+    const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/legs_data.json`;
+    const res = await fetch(apiUrl, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) {
+      if (res.status === 404) showSyncStatus('No data file found on GitHub yet. Push from another device first.', 'info');
+      else showSyncStatus('✗ Pull failed: ' + res.status, 'error');
+      return;
+    }
+    const file    = await res.json();
+    const binary  = atob(file.content.replace(/\n/g, ''));
+    const bytes   = Uint8Array.from(binary, c => c.charCodeAt(0));
+    const decoded = new TextDecoder().decode(bytes);
+    const parsed  = JSON.parse(decoded);
+    if (!parsed.hackSquat || !parsed.legCurl) {
+      showSyncStatus('Invalid data format — pull cancelled.', 'error');
+      return;
+    }
+    localStorage.setItem(DATA_KEY, decoded);
+    showSyncStatus('↓ Pulled from GitHub. Reloading...', 'success');
+    setTimeout(() => location.reload(), 1200);
+  } catch(e) {
+    showSyncStatus('✗ Error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+renderToday();
+</script>
+</body>
+</html>
