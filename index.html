@@ -650,7 +650,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.4</span>
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.4.1</span>
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -839,7 +839,8 @@ function defaultData() {
     program: null, // generated program
     workoutLogs: [], // [{week, day, date, exercises:[{name, sets:[{weight,reps,done,fail}]}]}]
     failStreak: {}, // {exerciseName: count}
-    assistanceWeights: {} // {exerciseName: {weight, reps}}
+    assistanceWeights: {}, // {exerciseName: {weight, reps}}
+    ohpRepsPerSet: 5  // tracks OHP rep target (4×5 → 4×8 before adding weight)
   };
 }
 
@@ -1130,7 +1131,8 @@ function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate, o
 }
 
 // ── OHP for Day 2 ──
-function generateOHPSets(week, ohpWeight, barWeight, smallestPlate) {
+function generateOHPSets(week, ohpWeight, ohpRepsPerSet, barWeight, smallestPlate) {
+  const reps = ohpRepsPerSet || 5;
   const isDeload = (week % 5 === 0);
   if (isDeload) {
     const w = roundToPlate(ohpWeight * 0.7, barWeight, smallestPlate);
@@ -1145,15 +1147,15 @@ function generateOHPSets(week, ohpWeight, barWeight, smallestPlate) {
     };
   }
   return {
-    label: '4×5 Overhead Press',
-    note: 'Add reps each week until you hit 4×8, then add 5 lbs and reset to 4×5. Rest 2:00–2:30.',
+    label: `4×${reps} Overhead Press`,
+    note: `Add reps each week until you hit 4×8, then add 5 lbs and reset to 4×5. Rest 2:00–2:30. Target this week: ${reps} reps.`,
     warmups: [
       { weight: barWeight, reps: 8 },
       { weight: roundToPlate(ohpWeight * 0.6, barWeight, smallestPlate), reps: 5 },
       { weight: roundToPlate(ohpWeight * 0.75, barWeight, smallestPlate), reps: 3 },
       { weight: roundToPlate(ohpWeight * 0.875, barWeight, smallestPlate), reps: 1 },
     ],
-    sets: [1,2,3,4].map(() => ({ targetWeight: ohpWeight, targetReps: 5, label: 'Set' }))
+    sets: [1,2,3,4].map(() => ({ targetWeight: ohpWeight, targetReps: reps, label: 'Set' }))
   };
 }
 
@@ -1497,8 +1499,11 @@ function renderToday() {
     if (dayDef.benchFocus === 'ohp') {
       // ── OHP DAY ──
       const ohpWeight = d.ohpWeight || 90;
-      const ohpInfo = generateOHPSets(week, ohpWeight, barWeight, smallestPlate);
+      const ohpRepsPerSet = d.ohpRepsPerSet || 5;
+      const ohpInfo = generateOHPSets(week, ohpWeight, ohpRepsPerSet, barWeight, smallestPlate);
       const loggedOHP = todayLog?.exercises?.find(e => e.name === 'Overhead Press');
+      const prevWeekOHPLog = d.workoutLogs.find(l => l.week === week - 1 && l.day === pendingSelectedDay);
+      const prevOHP = prevWeekOHPLog?.exercises?.find(e => e.name === 'Overhead Press');
 
       html += `<div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
@@ -1525,12 +1530,32 @@ function renderToday() {
         const loggedSet = loggedOHP?.sets?.[i];
         const statusClass = loggedSet ? (loggedSet.fail ? 'fail' : 'done') : '';
         const statusText = loggedSet ? (loggedSet.fail ? 'FAIL' : 'DONE') : '—';
+        const prevSet = prevOHP?.sets?.[i];
+        const currentReps = loggedSet ? loggedSet.reps : s.targetReps;
+        const currentWeight = loggedSet ? loggedSet.weight : s.targetWeight;
+        let prevRowHtml = '';
+        if (prevSet && !prevSet.skipped) {
+          const repDiff = currentReps - prevSet.reps;
+          const wtDiff  = currentWeight - prevSet.weight;
+          let deltaHtml = '';
+          if      (wtDiff  > 0) deltaHtml = `<span style="color:var(--green);margin-left:6px;font-size:11px">+${wtDiff} lbs</span>`;
+          else if (wtDiff  < 0) deltaHtml = `<span style="color:var(--red);margin-left:6px;font-size:11px">${wtDiff} lbs</span>`;
+          else if (repDiff > 0) deltaHtml = `<span style="color:var(--green);margin-left:6px;font-size:11px">+${repDiff} rep${repDiff!==1?'s':''}</span>`;
+          else if (repDiff < 0) deltaHtml = `<span style="color:var(--red);margin-left:6px;font-size:11px">${repDiff} rep${Math.abs(repDiff)!==1?'s':''}</span>`;
+          else                  deltaHtml = `<span style="color:var(--muted);margin-left:6px;font-size:11px">same</span>`;
+          prevRowHtml = `<div style="grid-column:1/-1;padding:2px 0 6px 48px;border-bottom:1px solid var(--border)">
+            <span style="font-size:11px;color:var(--muted)">Last week: </span>
+            <span style="font-size:11px;color:var(--text)">${prevSet.weight} lbs × ${prevSet.reps}</span>
+            ${deltaHtml}
+          </div>`;
+        }
         html += `<div class="set-row">
           <div class="set-num" style="font-size:11px; color:var(--muted)">S${i+1}</div>
           <div><input class="set-input" id="ohp-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} /></div>
           <div><input class="set-input" id="ohp-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
           <button class="set-status-btn ${statusClass}" id="ohp-s-${i}" onclick="toggleSetStatus('ohp',${i})" ${todayLog?'disabled':''}>${statusText}</button>
-        </div>`;
+        </div>
+        ${prevRowHtml}`;
       });
       html += `</div>`;
 
@@ -2009,7 +2034,7 @@ function logWorkout() {
   // ── OHP DAY ──
   if (dayDef.benchFocus === 'ohp') {
     const ohpWeight = d.ohpWeight || 90;
-    const ohpInfo = generateOHPSets(week, ohpWeight, barWeight, smallestPlate);
+    const ohpInfo = generateOHPSets(week, ohpWeight, d.ohpRepsPerSet || 5, barWeight, smallestPlate);
     let allDone = true;
     let anyFail = false;
     let anySkipped = false;
@@ -2784,31 +2809,7 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-// ═══════════════════════════════════════════════════════════
-// RENDER SETTINGS
-// ═══════════════════════════════════════════════════════════
-
-function renderSettings() {
-  const d = loadData();
-  if (d.settings) {
-    const s = d.settings;
-    const fields = {
-      'set-1rm': d.estimated1RM,
-      'set-goal': s.goal,
-      'set-ohp': d.ohpWeight || 90,
-      'set-bar': s.barWeight,
-      'set-plate': s.smallestPlate,
-    };
-    Object.entries(fields).forEach(([id, val]) => {
-      const el = document.getElementById(id);
-      if (el && val) el.value = val;
-    });
-    const eqEl = document.getElementById('set-equipment');
-    if (s.equipment && eqEl) eqEl.value = s.equipment;
-    const daysEl = document.getElementById('set-days');
-    if (s.daysPerWeek && daysEl) daysEl.value = s.daysPerWeek;
-  }
-}
+// renderSettings defined fully below (near GitHub sync section)
 
 // ═══════════════════════════════════════════════════════════
 // HEADER UPDATE
@@ -2899,7 +2900,7 @@ function renderSchedule() {
 
       // Main lift sets
       if (dayDef.benchFocus === 'ohp') {
-        const ohpInfo = generateOHPSets(simWeek, simOHP, barWeight, smallestPlate);
+        const ohpInfo = generateOHPSets(simWeek, simOHP, d.ohpRepsPerSet || 5, barWeight, smallestPlate);
         html += `<div style="margin-bottom:10px">
           <div style="font-size:11px; font-weight:600; color:#c084fc; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Overhead Press — ${simOHP} lbs</div>
           <div style="font-size:12px; color:var(--muted)">Warmup: ${ohpInfo.warmups.map(w => `${w.weight}×${w.reps}`).join(' → ')}</div>
@@ -3420,35 +3421,44 @@ function clearSwapOverride() {
 // ═══════════════════════════════════════════════════════════
 
 let restTimerInterval = null;
-let restTimerSeconds = 0;
-let restTimerDefault = 120; // 2 minutes default
+let restTimerEndTime  = 0;   // absolute wall-clock ms when timer hits 0
+let restTimerDefault  = 120; // 2 minutes default
+
+// Compute remaining seconds from wall clock (never relies on tick counting)
+function restTimerRemaining() {
+  return Math.round((restTimerEndTime - Date.now()) / 1000);
+}
 
 function startRestTimer() {
-  // Don't restart if already running
   if (restTimerInterval) stopRestTimer();
-  restTimerSeconds = restTimerDefault;
+  restTimerEndTime = Date.now() + restTimerDefault * 1000;
   showRestTimer();
-  restTimerInterval = setInterval(() => {
-    restTimerSeconds--;
-    updateRestTimerDisplay();
-    if (restTimerSeconds <= 0) {
-      stopRestTimer();
-      // Vibrate on supported devices
-      if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
-      const display = document.getElementById('rest-timer-display');
-      if (display) {
-        display.textContent = "GO! 🔥";
-        display.style.color = 'var(--accent)';
-      }
-      // Auto-hide after 3 seconds
-      setTimeout(() => hideRestTimer(), 3000);
-    }
-  }, 1000);
+  restTimerInterval = setInterval(_restTimerTick, 500); // 500ms poll = snappy even if throttled
+}
+
+function _restTimerTick() {
+  const remaining = restTimerRemaining();
+  updateRestTimerDisplay();
+  if (remaining <= 0) {
+    stopRestTimer();
+    if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+    const display = document.getElementById('rest-timer-display');
+    if (display) { display.textContent = "GO! 🔥"; display.style.color = 'var(--accent)'; }
+    setTimeout(() => hideRestTimer(), 3000);
+  }
 }
 
 function stopRestTimer() {
   if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
 }
+
+// When app returns to foreground, immediately re-sync display from wall clock
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && restTimerInterval) {
+    updateRestTimerDisplay();
+    if (restTimerRemaining() <= 0) _restTimerTick(); // trigger completion if already expired
+  }
+});
 
 function showRestTimer() {
   let el = document.getElementById('rest-timer-overlay');
@@ -3496,35 +3506,26 @@ function hideRestTimer() {
 function updateRestTimerDisplay() {
   const display = document.getElementById('rest-timer-display');
   if (!display) return;
-  const m = Math.floor(Math.abs(restTimerSeconds) / 60);
-  const s = Math.abs(restTimerSeconds) % 60;
+  const remaining = restTimerRemaining();
+  const abs = Math.abs(remaining);
+  const m = Math.floor(abs / 60);
+  const s = abs % 60;
   display.textContent = `${m}:${s.toString().padStart(2,'0')}`;
-  // Color shifts as time runs low
-  if (restTimerSeconds <= 10) display.style.color = 'var(--accent2)';
-  else if (restTimerSeconds <= 30) display.style.color = 'var(--accent)';
+  if (remaining <= 10) display.style.color = 'var(--accent2)';
+  else if (remaining <= 30) display.style.color = 'var(--accent)';
   else display.style.color = 'var(--green)';
 }
 
 function adjustRestTimer(delta) {
-  restTimerSeconds = Math.max(5, restTimerSeconds + delta);
+  restTimerEndTime = Math.max(Date.now() + 5000, restTimerEndTime + delta * 1000);
   updateRestTimerDisplay();
 }
 
 function setRestTimer(seconds) {
   stopRestTimer();
-  restTimerDefault = seconds;
-  restTimerSeconds = seconds;
-  restTimerInterval = setInterval(() => {
-    restTimerSeconds--;
-    updateRestTimerDisplay();
-    if (restTimerSeconds <= 0) {
-      stopRestTimer();
-      if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
-      const display = document.getElementById('rest-timer-display');
-      if (display) { display.textContent = "GO! 🔥"; display.style.color = 'var(--accent)'; }
-      setTimeout(() => hideRestTimer(), 3000);
-    }
-  }, 1000);
+  restTimerDefault  = seconds;
+  restTimerEndTime  = Date.now() + seconds * 1000;
+  restTimerInterval = setInterval(_restTimerTick, 500);
   updateRestTimerDisplay();
 }
 
