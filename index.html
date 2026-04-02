@@ -650,7 +650,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.4.1</span>
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.6</span>
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -791,7 +791,7 @@
       <strong style="color:var(--text)">Day 2 — Volume Bench:</strong> 4×6 at ~74% TM. Rate the last set RPE to auto-regulate next week's weight. Builds the work capacity and muscle to support the heavy single.<br><br>
       <strong style="color:var(--text)">Day 3 — OHP:</strong> Overhead Press, 4×5 building toward 4×8 before adding weight. Keeps shoulders and triceps healthy and strong.<br><br>
       <strong style="color:var(--text)">Day 4 — Paused Bench:</strong> 5×4 at 75% TM with a mandatory 2-second pause at the chest. Builds leg drive, starting strength, and positional control — the things that matter most at 90%+ of max.<br><br>
-      <strong style="color:var(--text)">Assistance:</strong> One rowing movement, one rear delt, one curl, one tricep isolation per day. Weight progresses automatically when you hit the top of the rep range across all sets.<br><br>
+      <strong style="color:var(--text)">Assistance:</strong> One rowing movement, one rear delt, one curl, and one tricep isolation per day — except Day 4 (Paused Bench), which skips direct tricep work to protect the elbow after the most joint-intensive bench variation. Weight progresses automatically when you hit the top of the rep range across all sets.<br><br>
       <strong style="color:var(--text)">Deload (every 5th week):</strong> Weights drop to 60–70%. This is when adaptation happens.<br><br>
       <strong style="color:var(--text)">Failure Protocol:</strong> Miss the heavy single twice in a row → TM drops 10% and rebuilds. Assistance stalls → hold weight, adjust rep target.
     </p>
@@ -927,6 +927,7 @@ const ASSISTANCE_LIBRARY = {
   // Chest (accessory — bench is primary chest work)
   'Hammer Strength Incline':    { group: 'chest',    sets: 3, repRange: [10,12], startWeight: 90,  failProtocol: 'hypertrophy' },
   'Cable Fly':                  { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 40,  failProtocol: 'pump'        },
+  'Pec Deck':                   { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 70,  failProtocol: 'hypertrophy' },
 };
 
 // ── FAILURE PROTOCOLS ─────────────────────────────────────
@@ -958,7 +959,7 @@ const FAIL_PROTOCOLS = {
 };
 
 // ─────────────────────────────────────────────────────────
-// Weekly set totals (4-day): Back 16, Shoulders 16, Biceps 16, Triceps 16, Chest 6+bench ✓
+// Weekly set totals (4-day): Back 16, Shoulders 16, Biceps 16, Triceps 12, Chest: bench (3 days) + HS Incline 3 sets + Pec Deck 3 sets ✓
 // ─────────────────────────────────────────────────────────
 
 function getDayStructure(daysPerWeek) {
@@ -967,17 +968,17 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day A — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
       },
       {
         label: 'Day B — OHP + Lats + Bis',
         benchFocus: 'ohp',
-        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
+        assistance: ['Lat Pulldown','Lateral Raise','Hammer Curl','Tricep Pushdown','Pec Deck']
       },
       {
         label: 'Day C — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','JM Press']
+        assistance: ['Seated Chest-Supported Row','Hammer Strength Incline','Face Pull','Incline DB Curl','JM Press']
       },
     ];
   } else if (daysPerWeek === 4) {
@@ -990,7 +991,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Close Grip Pulldown','Face Pull','Hammer Curl','Overhead Tricep Ext']
+        assistance: ['Close Grip Pulldown','Hammer Strength Incline','Face Pull','Hammer Curl','Overhead Tricep Ext']
       },
       {
         label: 'Day 3 — OHP + Lats + Bis',
@@ -1000,36 +1001,36 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 4 — Paused Bench + Back + Arms',
         benchFocus: 'paused',
-        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl']
+        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','Pec Deck']
       },
     ];
-    // Back 16, Shoulders 16, Biceps 16, Triceps 16, Chest 6 ✓
+    // Back 16, Shoulders 16, Biceps 16, Triceps 12 (intentional: Day 4 is paused bench), Chest: bench work + HS Incline 3 sets (Day 2) + Pec Deck 3 sets (Day 4) ✓
   } else {
     return [
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl','Skull Crusher']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
       },
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
         benchFocus: 'volume',
-        assistance: ['Seated Cable Row','Face Pull','Hammer Curl','Overhead Tricep Ext']
+        assistance: ['Seated Chest-Supported Row','Hammer Strength Incline','Face Pull','Hammer Curl','Overhead Tricep Ext']
       },
       {
         label: 'Day 3 — OHP + Lats + Bis',
         benchFocus: 'ohp',
-        assistance: ['Lat Pulldown','Lateral Raise','Dumbbell Curl','Tricep Pushdown']
+        assistance: ['Lat Pulldown','Lateral Raise','Hammer Curl','Tricep Pushdown']
       },
       {
         label: 'Day 4 — Paused Bench + Back + Arms',
         benchFocus: 'paused',
-        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl']
+        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','Pec Deck']
       },
       {
         label: 'Day 5 — OHP + Full Upper Accessory',
         benchFocus: 'ohp',
-        assistance: ['Lat Pulldown','Rear Delt Fly','EZ Bar Curl','Skull Crusher']
+        assistance: ['Lat Pulldown','Rear Delt Fly','EZ Bar Curl (Outside Grip)','Skull Crusher']
       },
     ];
   }
@@ -1041,10 +1042,10 @@ function getDayStructure(daysPerWeek) {
 // Day 1 (Weekend/Heavy): Top Single RPE 7.5–8 + 4×5 back-offs
 // Day 2 (Monday):        Volume Bench 4×6
 // Day 3 (Wednesday):     OHP 4×5 (bench rest — shoulder strength)
-// Day 4 (Thursday):      Speed Bench 8×3 @ 65%
+// Day 4 (Thursday):      Paused Bench
 //
-// Weekly increment: +2.5 lbs on single & all bench variants
-// Deload every 4th week: drop to 60% for all bench work
+// Weekly increment: RPE-driven (see generateBenchSets)
+// Deload every 5th week: drop to 60% for all bench work
 // ─────────────────────────────────────────────────────────
 
 function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate, overrideWeight) {
@@ -1289,8 +1290,7 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  event && event.target.classList.add('active');
-  // Find the right button
+  // Highlight the matching nav button by page name
   document.querySelectorAll('.nav-btn').forEach(b => {
     if (b.textContent.toLowerCase().includes(name)) b.classList.add('active');
   });
@@ -2117,7 +2117,7 @@ function logWorkout() {
       // Read RPE for the single
       const rpeEl = document.getElementById(`bench-rpe-${i}`);
       const rpe = rpeEl ? (parseInt(rpeEl.value) || null) : null;
-      return { weight: w, reps: r, done: st.done || !st.fail, fail, isSingle: !!s.isSingle, rpe };
+      return { weight: w, reps: r, done: !!st.done, fail, isSingle: !!s.isSingle, rpe };
     });
     exercises.push({ name: 'Bench Press', sets: benchSets });
 
@@ -2474,9 +2474,9 @@ function renderProgram() {
   }
 
   const structure = getDayStructure(d.settings.daysPerWeek);
-  const weekInCycle = ((d.currentWeek - 1) % 4) + 1;
-  const isDeloadWeek = d.currentWeek % 4 === 0;
-  const phaseLabels = { 1: 'Build Week 1', 2: 'Build Week 2', 3: 'Build Week 3', 4: 'Deload' };
+  const weekInCycle = ((d.currentWeek - 1) % 5) + 1;
+  const isDeloadWeek = d.currentWeek % 5 === 0;
+  const phaseLabels = { 1: 'Build Week 1', 2: 'Build Week 2', 3: 'Build Week 3', 4: 'Build Week 4', 5: 'Deload' };
 
   let html = `
     <div class="card">
@@ -2497,17 +2497,17 @@ function renderProgram() {
       </div>` : ''}
     </div>`;
 
-  // Show current 4-week block
-  const blockStart = Math.floor((d.currentWeek - 1) / 4) * 4 + 1;
-  for (let wk = blockStart; wk <= blockStart + 3; wk++) {
+  // Show current 5-week block (4 build weeks + 1 deload)
+  const blockStart = Math.floor((d.currentWeek - 1) / 5) * 5 + 1;
+  for (let wk = blockStart; wk <= blockStart + 4; wk++) {
     const isCurrentWeek = wk === d.currentWeek;
-    const isDeload = wk % 4 === 0;
+    const isDeload = wk % 5 === 0;
 
     html += `<div class="card" style="border-color: ${isCurrentWeek ? 'var(--accent)' : 'var(--border)'}">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
         <div>
           <div class="card-title" style="margin-bottom:0">Week ${wk}</div>
-          <div style="font-size:12px; color:var(--muted); margin-top:2px">${isDeload ? 'Deload — recover & reset' : 'Training Max: ' + roundToPlate((d.trainingMax - (d.currentWeek - wk) * 2.5), d.settings.barWeight, d.settings.smallestPlate) + ' lbs'}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:2px">${isDeload ? 'Deload — recover & reset' : (isCurrentWeek ? 'Training Max: ' : 'Est. Training Max: ') + roundToPlate((d.trainingMax - (d.currentWeek - wk) * 2.5), d.settings.barWeight, d.settings.smallestPlate) + ' lbs'}</div>
         </div>
         <div style="display:flex; gap:6px">
           ${isCurrentWeek ? '<span class="day-badge">CURRENT</span>' : ''}
@@ -3367,7 +3367,7 @@ function pcCalc() {
 // ═══════════════════════════════════════════════════════════
 // Swaps Volume Bench and OHP for this week only.
 // Stores a flag in localStorage so after OHP today,
-// the app shows Volume Bench next (before Speed Bench).
+// the app shows Volume Bench next (before Paused Bench).
 
 function swapOHPDay() {
   const d = loadData();
@@ -3711,8 +3711,12 @@ function showSyncStatus(msg, type) {
 function updateSyncBadge() {
   const last = localStorage.getItem('gh_last_sync');
   if (!last) return;
-  const el = document.getElementById('sync-last');
-  if (el) el.textContent = 'Last synced: ' + new Date(last).toLocaleString();
+  const el = document.getElementById('sync-status');
+  if (el) {
+    el.style.display = 'block';
+    el.style.color = 'var(--muted)';
+    el.textContent = 'Last synced: ' + new Date(last).toLocaleString();
+  }
 }
 
 function showToast(msg, isError = false) {
