@@ -758,6 +758,15 @@
     <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
   </div>
 
+  <div class="card" id="assistance-weights-card">
+    <div class="card-title">⚖️ Correct Assistance Weights</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6">
+      If the app's suggested weights don't match what you actually lift, fix them here. Changes take effect immediately.
+    </p>
+    <div id="assistance-weights-editor"></div>
+    <button class="btn btn-primary" onclick="saveAssistanceWeights()" style="margin-top:10px">Save Weights</button>
+  </div>
+
   <div class="card" id="github-sync-card">
     <div class="card-title">&#9729;&#65039; GitHub Sync</div>
     <p style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6">
@@ -1502,7 +1511,9 @@ function renderToday() {
       const ohpRepsPerSet = d.ohpRepsPerSet || 5;
       const ohpInfo = generateOHPSets(week, ohpWeight, ohpRepsPerSet, barWeight, smallestPlate);
       const loggedOHP = todayLog?.exercises?.find(e => e.name === 'Overhead Press');
-      const prevWeekOHPLog = d.workoutLogs.find(l => l.week === week - 1 && l.day === pendingSelectedDay);
+      // Find most recent prior log for this same day (not strictly week-1)
+      const prevOHPDayLogs = d.workoutLogs.filter(l => l.day === pendingSelectedDay && (l.week < week || (l.week === week && l.date < new Date().toISOString().slice(0,10))));
+      const prevWeekOHPLog = prevOHPDayLogs[prevOHPDayLogs.length - 1] || null;
       const prevOHP = prevWeekOHPLog?.exercises?.find(e => e.name === 'Overhead Press');
 
       html += `<div class="card">
@@ -1694,7 +1705,9 @@ function renderToday() {
   }
 
   // ASSISTANCE EXERCISES
-  const prevWeekLog = d.workoutLogs.find(l => l.week === week - 1 && l.day === pendingSelectedDay);
+  // Find most recent prior log for this same day (not strictly week-1, in case week hasn't advanced yet)
+  const prevDayLogs = d.workoutLogs.filter(l => l.day === pendingSelectedDay && (l.week < week || (l.week === week && l.date < new Date().toISOString().slice(0,10))));
+  const prevWeekLog = prevDayLogs[prevDayLogs.length - 1] || null;
 
   dayDef.assistance.forEach((exName, exIdx) => {
     const exDef = ASSISTANCE_LIBRARY[exName];
@@ -3765,6 +3778,57 @@ function renderSettings() {
   if (d.ohpWeight && ohpEl) ohpEl.value = d.ohpWeight;
   if (barEl)  barEl.value  = d.settings.barWeight    || 45;
   if (platEl) platEl.value = d.settings.smallestPlate || 2.5;
+
+  // ── Render assistance weights editor ──
+  const editorEl = document.getElementById('assistance-weights-editor');
+  if (editorEl) {
+    const groups = {};
+    Object.entries(ASSISTANCE_LIBRARY).forEach(([name, def]) => {
+      if (!groups[def.group]) groups[def.group] = [];
+      groups[def.group].push(name);
+    });
+    let html = '';
+    Object.entries(groups).forEach(([group, exercises]) => {
+      html += `<div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:14px 0 8px">${group}</div>`;
+      exercises.forEach(name => {
+        const def = ASSISTANCE_LIBRARY[name];
+        const aw = d.assistanceWeights[name] || { weight: def.startWeight, repTarget: def.repRange[0] };
+        html += `<div style="display:grid; grid-template-columns:1fr 80px 80px; gap:8px; align-items:center; margin-bottom:6px">
+          <div style="font-size:13px; color:var(--text)">${name}</div>
+          <input type="number" class="form-input" id="aw-w-${name.replace(/[^a-z0-9]/gi,'_')}" value="${aw.weight}" placeholder="lbs" style="padding:6px 8px; font-size:13px" />
+          <input type="number" class="form-input" id="aw-r-${name.replace(/[^a-z0-9]/gi,'_')}" value="${aw.repTarget}" placeholder="reps" style="padding:6px 8px; font-size:13px" />
+        </div>`;
+      });
+    });
+    html = `<div style="display:grid; grid-template-columns:1fr 80px 80px; gap:8px; margin-bottom:4px">
+      <div style="font-size:11px; color:var(--muted)">Exercise</div>
+      <div style="font-size:11px; color:var(--muted); text-align:center">Wt (lbs)</div>
+      <div style="font-size:11px; color:var(--muted); text-align:center">Rep target</div>
+    </div>` + html;
+    editorEl.innerHTML = html;
+  }
+}
+
+function saveAssistanceWeights() {
+  const d = loadData();
+  Object.keys(ASSISTANCE_LIBRARY).forEach(name => {
+    const key = name.replace(/[^a-z0-9]/gi,'_');
+    const wEl = document.getElementById('aw-w-' + key);
+    const rEl = document.getElementById('aw-r-' + key);
+    if (wEl && rEl) {
+      const w = parseFloat(wEl.value);
+      const r = parseInt(rEl.value);
+      const def = ASSISTANCE_LIBRARY[name];
+      if (!isNaN(w) && w > 0 && !isNaN(r) && r > 0) {
+        d.assistanceWeights[name] = {
+          weight: w,
+          repTarget: Math.min(Math.max(r, def.repRange[0]), def.repRange[1])
+        };
+      }
+    }
+  });
+  saveData(d);
+  showToast('Assistance weights saved ✓');
 }
 
 window.addEventListener('DOMContentLoaded', () => {
