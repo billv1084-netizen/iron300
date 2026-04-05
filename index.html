@@ -650,7 +650,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.6</span>
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.7</span>
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -2616,6 +2616,38 @@ function renderProgram() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// CONSISTENCY / STREAK HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function calcConsistency(workoutLogs, currentWeek) {
+  // A week "counts" if at least one non-skipped workout was logged
+  const completedWeeks = new Set(
+    workoutLogs.filter(l => !l.skipped).map(l => l.week)
+  );
+
+  // Current streak: consecutive completed weeks going back from the most recent
+  // (include currentWeek if it already has a workout, otherwise start from week before)
+  let streakStart = completedWeeks.has(currentWeek) ? currentWeek : currentWeek - 1;
+  let streak = 0;
+  for (let w = streakStart; w >= 1; w--) {
+    if (completedWeeks.has(w)) streak++;
+    else break;
+  }
+
+  // 12-week attendance: completed weeks / total elapsed weeks (up to 12, excluding current)
+  const lookback = 12;
+  const endWeek = currentWeek - 1; // only count fully elapsed weeks
+  const startWeek = Math.max(1, endWeek - lookback + 1);
+  let done = 0, total = 0;
+  for (let w = startWeek; w <= endWeek; w++) {
+    total++;
+    if (completedWeeks.has(w)) done++;
+  }
+
+  return { streak, done, total };
+}
+
+// ═══════════════════════════════════════════════════════════
 // RENDER PROGRESS
 // ═══════════════════════════════════════════════════════════
 
@@ -2671,11 +2703,36 @@ function renderProgress() {
     </div>`;
 
   // Stats
+  const cons = calcConsistency(d.workoutLogs, d.currentWeek);
+  const streakLabel = cons.streak === 1 ? '1 week' : cons.streak + ' weeks';
+  const attendLabel = cons.total > 0 ? cons.done + '/' + cons.total : '—';
+
   html += `<div class="stats-grid">
     <div class="stat-box"><div class="stat-box-val">${d.workoutLogs.length}</div><div class="stat-box-label">Workouts Done</div></div>
     <div class="stat-box"><div class="stat-box-val">${d.currentWeek}</div><div class="stat-box-label">Weeks In</div></div>
     <div class="stat-box"><div class="stat-box-val">${d.trainingMax}</div><div class="stat-box-label">Training Max</div></div>
     <div class="stat-box"><div class="stat-box-val">${benchHistory.length > 1 ? '+' + (benchHistory[benchHistory.length-1].rm - benchHistory[0].rm) : '—'}</div><div class="stat-box-label">1RM Gained (lbs)</div></div>
+  </div>`;
+
+  // Consistency card
+  const streakEmoji = cons.streak >= 8 ? '🔥' : cons.streak >= 4 ? '💪' : cons.streak >= 2 ? '✅' : '';
+  const attendPct = cons.total > 0 ? Math.round(cons.done / cons.total * 100) : null;
+  const attendColor = attendPct === null ? 'var(--muted)' : attendPct >= 90 ? '#22c55e' : attendPct >= 75 ? '#f59e0b' : '#ef4444';
+
+  html += `<div class="card">
+    <div class="card-title">Consistency</div>
+    <div style="display:flex; gap:16px; flex-wrap:wrap">
+      <div style="flex:1; min-width:120px; text-align:center; padding:12px; background:var(--surface2); border-radius:10px">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:var(--accent); line-height:1">${cons.streak}${streakEmoji ? ' ' + streakEmoji : ''}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:.5px">Week Streak</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px">${cons.streak === 0 ? 'Start one this week' : 'consecutive weeks trained'}</div>
+      </div>
+      <div style="flex:1; min-width:120px; text-align:center; padding:12px; background:var(--surface2); border-radius:10px">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:${attendColor}; line-height:1">${attendLabel}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:.5px">Last ${cons.total} Weeks</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px">${attendPct !== null ? attendPct + '% attendance' : 'Complete a week to start'}</div>
+      </div>
+    </div>
   </div>`;
 
   // 1RM History
