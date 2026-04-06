@@ -49,6 +49,9 @@ const returnStmt = [
   '  buildBenchWarmups: buildBenchWarmups,',
   '  generateScaledWarmups: generateScaledWarmups,',
   '  calcConsistency: calcConsistency,',
+  '  getImplied1RMHistory: getImplied1RMHistory,',
+  '  linearRegression: linearRegression,',
+  '  projectGoalDate: projectGoalDate,',
   '};',
 ].join('\n');
 
@@ -78,6 +81,9 @@ const {
   buildBenchWarmups,
   generateScaledWarmups,
   calcConsistency,
+  getImplied1RMHistory,
+  linearRegression,
+  projectGoalDate,
 } = appFns;
 
 // ── Test harness ───────────────────────────────────────────────
@@ -585,6 +591,152 @@ const oneWorkout = calcConsistency(makeLogs([1]), 2);
 expect('One workout: streak = 1',    oneWorkout.streak, 1);
 expect('One workout: done = 1',      oneWorkout.done,   1);
 expect('One workout: total = 1',     oneWorkout.total,  1);
+
+// ════════════════════════════════════════════════════════════════
+// 9. linearRegression
+// ════════════════════════════════════════════════════════════════
+section('linearRegression');
+
+// Perfect ascending line y = 2x + 10
+const ascPts = [{x:0,y:10},{x:1,y:12},{x:2,y:14},{x:3,y:16}];
+const ascReg = linearRegression(ascPts);
+expectClose('slope of y=2x+10 = 2',     ascReg.slope,     2,   0.001);
+expectClose('intercept of y=2x+10 = 10',ascReg.intercept, 10,  0.001);
+
+// Perfect flat line y = 5
+const flatPts = [{x:0,y:5},{x:1,y:5},{x:2,y:5}];
+const flatReg = linearRegression(flatPts);
+expectClose('flat line: slope = 0',      flatReg.slope,     0,   0.001);
+expectClose('flat line: intercept = 5',  flatReg.intercept, 5,   0.001);
+
+// Too few points → null
+expect('linearRegression with 1 pt returns null', linearRegression([{x:0,y:10}]), null);
+expect('linearRegression with 0 pts returns null', linearRegression([]), null);
+
+// Slope from realistic bench data (weeks 1-4, gains ~2.5 lbs/wk)
+const benchPts = [{x:1,y:240},{x:2,y:242},{x:3,y:245},{x:4,y:247}];
+const benchReg = linearRegression(benchPts);
+expectTrue('bench regression: slope > 0', benchReg && benchReg.slope > 0);
+expectTrue('bench regression: slope reasonable (1–5 lbs/wk)', benchReg && benchReg.slope >= 1 && benchReg.slope <= 5);
+
+// ════════════════════════════════════════════════════════════════
+// 10. getImplied1RMHistory
+// ════════════════════════════════════════════════════════════════
+section('getImplied1RMHistory');
+
+// Empty / missing data
+expect('empty logs → []', JSON.stringify(getImplied1RMHistory({ workoutLogs: [] })), '[]');
+expect('null d → []', JSON.stringify(getImplied1RMHistory(null)), '[]');
+
+// Single heavy bench log with RPE 8 — implied 1RM = 245 / 0.94 ≈ 261
+const singleLog = {
+  workoutLogs: [{
+    week: 1, day: 1, date: '2026-01-07',
+    exercises: [{
+      name: 'Bench Press',
+      sets: [
+        { weight: 245, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 },
+        { weight: 205, reps: 5, done: true, fail: false, isSingle: false },
+      ]
+    }]
+  }]
+};
+const h1 = getImplied1RMHistory(singleLog);
+expect('one single: length = 1', h1.length, 1);
+expectClose('one single: implied 1RM from RPE 8 ≈ 261', h1[0].rm, Math.round(245 / 0.94), 1);
+
+// Single with no RPE → weight used directly as best estimate
+const noRPELog = {
+  workoutLogs: [{
+    week: 2, day: 1, date: '2026-01-14',
+    exercises: [{
+      name: 'Bench Press',
+      sets: [{ weight: 250, reps: 1, done: true, fail: false, isSingle: true, rpe: null }]
+    }]
+  }]
+};
+const h2 = getImplied1RMHistory(noRPELog);
+expect('no RPE: length = 1', h2.length, 1);
+expect('no RPE: rm = weight directly', h2[0].rm, 250);
+
+// Failed single should be excluded
+const failLog = {
+  workoutLogs: [{
+    week: 3, day: 1, date: '2026-01-21',
+    exercises: [{
+      name: 'Bench Press',
+      sets: [{ weight: 260, reps: 1, done: false, fail: true, isSingle: true, rpe: 10 }]
+    }]
+  }]
+};
+expect('failed single excluded: length = 0', getImplied1RMHistory(failLog).length, 0);
+
+// Non-Day1 log with no isSingle set should be excluded
+const noBenchLog = {
+  workoutLogs: [{
+    week: 1, day: 2, date: '2026-01-08',
+    exercises: [{
+      name: 'Bench Press',
+      sets: [{ weight: 185, reps: 6, done: true, fail: false, isSingle: false }]
+    }]
+  }]
+};
+expect('volume bench (no single): excluded', getImplied1RMHistory(noBenchLog).length, 0);
+
+// Multiple logs sorted by week
+const multiLog = {
+  workoutLogs: [
+    { week: 3, day: 1, date: '2026-01-21', exercises: [{ name: 'Bench Press', sets: [{ weight: 250, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 }] }] },
+    { week: 1, day: 1, date: '2026-01-07', exercises: [{ name: 'Bench Press', sets: [{ weight: 240, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 }] }] },
+    { week: 2, day: 1, date: '2026-01-14', exercises: [{ name: 'Bench Press', sets: [{ weight: 245, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 }] }] },
+  ]
+};
+const hMulti = getImplied1RMHistory(multiLog);
+expect('multi: sorted by week, length = 3', hMulti.length, 3);
+expect('multi: first entry is wk 1', hMulti[0].week, 1);
+expect('multi: last entry is wk 3',  hMulti[2].week, 3);
+expectTrue('multi: rms ascending', hMulti[0].rm <= hMulti[1].rm && hMulti[1].rm <= hMulti[2].rm);
+
+// ════════════════════════════════════════════════════════════════
+// 11. projectGoalDate
+// ════════════════════════════════════════════════════════════════
+section('projectGoalDate');
+
+// Not enough data
+expect('< 2 points → null', projectGoalDate([{week:1,rm:240,date:'2026-01-07'}], 300), null);
+
+// Negative / zero slope → null
+const flatHistory = [
+  {week:1, rm:250, date:'2026-01-07'},
+  {week:2, rm:250, date:'2026-01-14'},
+];
+expect('flat trendline → null', projectGoalDate(flatHistory, 300), null);
+
+const descHistory = [
+  {week:1, rm:260, date:'2026-01-07'},
+  {week:2, rm:255, date:'2026-01-14'},
+];
+expect('declining trendline → null', projectGoalDate(descHistory, 300), null);
+
+// Already at or above goal per trendline → null
+const nearGoalHistory = [
+  {week:1, rm:298, date:'2026-01-07'},
+  {week:2, rm:302, date:'2026-01-14'},
+];
+const alreadyThere = projectGoalDate(nearGoalHistory, 300);
+expect('trendline already at goal → null', alreadyThere, null);
+
+// Realistic projection — should return a Date in the future
+const realisticHistory = [
+  {week:1,  rm:240, date:'2026-01-07'},
+  {week:5,  rm:250, date:'2026-02-04'},
+  {week:9,  rm:260, date:'2026-03-04'},
+  {week:13, rm:270, date:'2026-04-01'},
+];
+const projD = projectGoalDate(realisticHistory, 300);
+expectTrue('realistic projection: returns a Date', projD instanceof Date);
+expectTrue('realistic projection: in the future', projD && projD > new Date('2026-01-01'));
+expectTrue('realistic projection: not impossibly far (< 10 years)', projD && projD < new Date('2036-01-01'));
 
 // ════════════════════════════════════════════════════════════════
 // RESULTS
