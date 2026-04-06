@@ -643,6 +643,107 @@
   .effort-btn.selected-easy { background: #F0FDF4; color: #15803D; border-color: #16A34A; }
   .effort-btn.selected-ok   { background: var(--cobalt-tint); color: var(--accent); border-color: var(--accent); }
   .effort-btn.selected-hard { background: #FEF2F2; color: #EF4444; border-color: #EF4444; }
+
+  /* ── LEGS TAB ── */
+  .legs-workout-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 20px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .legs-workout-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(26,68,200,0.1); }
+  .legs-wc-name   { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .legs-wc-detail { font-size: 13px; color: var(--blue-grey); }
+  .legs-wc-weight { font-size: 26px; font-weight: 800; color: var(--accent); text-align: right; }
+  .legs-wc-label  { font-size: 11px; color: var(--muted); text-align: right; }
+  .legs-wc-arrow  { font-size: 22px; color: var(--border); margin-left: 12px; }
+
+  .legs-info-box {
+    background: var(--cobalt-tint);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+    margin: 14px 0;
+  }
+  .legs-info-box strong { color: var(--accent); }
+
+  .legs-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--blue-grey);
+    margin: 14px 0 10px;
+  }
+
+  .legs-next-box {
+    border-radius: 8px; padding: 12px 14px; font-size: 13px;
+    margin-top: 14px; display: none;
+  }
+  .legs-next-box.up   { background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
+  .legs-next-box.hold { background: var(--cobalt-tint); border: 1px solid rgba(26,68,200,0.2); color: var(--accent); }
+  .legs-next-box.down { background: #FEF2F2; border: 1px solid #FECACA; color: var(--red); }
+
+  .legs-rpe-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .legs-rpe-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .legs-rpe-btn {
+    padding: 6px 11px; border-radius: 6px; border: 1.5px solid var(--border);
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    background: var(--surface2); color: var(--muted); transition: all 0.12s;
+  }
+  .legs-rpe-btn.active { background: var(--cobalt-tint); border-color: var(--accent); color: var(--accent); }
+
+  .legs-badge {
+    display: inline-block; background: var(--cobalt-tint); color: var(--accent);
+    border: 1px solid rgba(26,68,200,0.25); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 10px; border-radius: 20px;
+  }
+  .legs-btn-ghost {
+    background: transparent; color: var(--blue-grey); border: 1.5px solid var(--border);
+    padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .legs-sets-header {
+    display: grid; grid-template-columns: 50px 1fr 1fr 150px;
+    gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted);
+    padding-bottom: 8px; border-bottom: 1px solid var(--bg); margin-bottom: 6px;
+  }
+  .legs-set-row {
+    display: grid; grid-template-columns: 50px 1fr 1fr 150px;
+    gap: 8px; align-items: center; padding: 8px 0;
+    border-bottom: 1px solid #F7F6F4;
+  }
+  .legs-set-row:last-child { border-bottom: none; }
+  .legs-set-status { display: flex; gap: 4px; }
+  .legs-status-btn {
+    flex: 1; padding: 7px 4px; border-radius: 6px; border: 1.5px solid var(--border);
+    font-size: 11px; font-weight: 700; cursor: pointer;
+    background: var(--bg); color: var(--muted); transition: all 0.12s;
+  }
+  .legs-status-btn.done { background: var(--cobalt-tint); border-color: var(--accent); color: var(--accent); }
+  .legs-status-btn.fail { background: #FEF2F2; border-color: var(--red); color: var(--red); }
+
+  .legs-week-strip {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;
+  }
+  .legs-stat-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; text-align: center;
+  }
+  .legs-stat-val   { font-size: 22px; font-weight: 800; color: var(--accent); }
+  .legs-stat-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  @media (max-width: 480px) {
+    .legs-sets-header, .legs-set-row { grid-template-columns: 40px 1fr 1fr 120px; }
+    .legs-wc-weight { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -650,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v2.7</span>
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.0</span>
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -665,6 +766,10 @@
       <div class="hstat-label">Progress</div>
       <div class="hstat-val" id="header-pct">—</div>
     </div>
+    <div class="hstat" id="header-eta-wrap" style="display:none">
+      <div class="hstat-label">Hits 300</div>
+      <div class="hstat-val" id="header-eta" style="color:#f97316; font-size:16px">—</div>
+    </div>
   </div>
 </div>
 
@@ -675,6 +780,7 @@
   <button class="nav-btn" onclick="showPage('graphs')">Graphs</button>
   <button class="nav-btn" onclick="showPage('progress')">Progress</button>
   <button class="nav-btn" onclick="showPage('history')">History</button>
+  <button class="nav-btn" onclick="showPage('legs')">Legs</button>
   <button class="nav-btn" onclick="showPage('plates')">Plates</button>
   <button class="nav-btn" onclick="showPage('settings')">Settings</button>
 </div>
@@ -707,6 +813,11 @@
 <!-- HISTORY PAGE -->
 <div class="page" id="page-history">
   <div id="history-content"></div>
+</div>
+
+<!-- LEGS PAGE -->
+<div class="page" id="page-legs">
+  <div id="legs-content"></div>
 </div>
 
 <!-- PLATES PAGE -->
@@ -765,6 +876,24 @@
     </p>
     <div id="assistance-weights-editor"></div>
     <button class="btn btn-primary" onclick="saveAssistanceWeights()" style="margin-top:10px">Save Weights</button>
+  </div>
+
+  <div class="card" id="legs-equipment-card">
+    <div class="card-title">🦵 Legs Equipment</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6">
+      Equipment settings for the Legs tab. Changes take effect immediately.
+    </p>
+    <div class="form-group">
+      <label class="form-label">Hack Squat Smallest Plate (lbs)</label>
+      <input class="form-input" type="number" id="legs-set-plate" value="2.5" step="0.5" min="0.5" />
+      <div style="font-size:11px; color:var(--muted); margin-top:4px">Min jump per session = 2× this value (one plate each side).</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Leg Curl Machine Increment (lbs)</label>
+      <input class="form-input" type="number" id="legs-set-curl-inc" value="5" step="5" min="5" />
+    </div>
+    <button class="btn btn-primary" onclick="legs_saveEquipmentSettings()">Save Legs Equipment</button>
+    <div id="legs-equip-status" style="margin-top:8px; font-size:13px; display:none; color:var(--green)"></div>
   </div>
 
   <div class="card" id="github-sync-card">
@@ -905,6 +1034,55 @@ function impliedOneRM(weight, rpe) {
   const pct = RPE_PERCENTAGES[rpe] || RPE_PERCENTAGES[Math.round(rpe * 2) / 2];
   if (!pct) return null;
   return Math.round(weight / pct);
+}
+
+// ── 300LB PROGRESS HELPERS ─────────────────────────────────────────────
+
+// Extract implied 1RM from every logged heavy single (isSingle sets only)
+function getImplied1RMHistory(d) {
+  if (!d || !d.workoutLogs) return [];
+  const history = [];
+  d.workoutLogs.forEach(function(log) {
+    const bench = log.exercises && log.exercises.find(function(e) { return e.name === 'Bench Press'; });
+    if (!bench) return;
+    let singleSet = null;
+    bench.sets.forEach(function(s) { if (s.isSingle && s.done && !s.fail) singleSet = s; });
+    if (!singleSet) return;
+    const rm = (singleSet.rpe && RPE_PERCENTAGES[singleSet.rpe])
+      ? impliedOneRM(singleSet.weight, singleSet.rpe)
+      : singleSet.weight; // no RPE stored → treat weight as best estimate
+    if (rm) history.push({ date: log.date || '', week: log.week || 1, rm: Math.round(rm) });
+  });
+  history.sort(function(a, b) { return a.week - b.week || (a.date < b.date ? -1 : 1); });
+  return history;
+}
+
+// Least-squares linear regression. pts = [{x, y}, ...]  Returns {slope, intercept} or null.
+function linearRegression(pts) {
+  const n = pts.length;
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+  pts.forEach(function(p) { sx += p.x; sy += p.y; sxy += p.x * p.y; sx2 += p.x * p.x; });
+  const denom = n * sx2 - sx * sx;
+  if (!denom) return null;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return { slope: slope, intercept: intercept };
+}
+
+// Project the date when the linear trendline hits goal. Returns a Date or null.
+function projectGoalDate(history, goal) {
+  if (history.length < 2) return null;
+  const pts = history.map(function(h) { return { x: h.week, y: h.rm }; });
+  const reg = linearRegression(pts);
+  if (!reg || reg.slope <= 0) return null;
+  const weekAtGoal = (goal - reg.intercept) / reg.slope;
+  const lastWeek = history[history.length - 1].week;
+  if (weekAtGoal <= lastWeek) return null;
+  const weeksLeft = weekAtGoal - lastWeek;
+  if (weeksLeft > 500) return null;
+  const lastDate = new Date(history[history.length - 1].date || Date.now());
+  return new Date(lastDate.getTime() + weeksLeft * 7 * 24 * 3600 * 1000);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1305,13 +1483,14 @@ function showPage(name) {
   });
 
   switch(name) {
-    case 'today': pendingSelectedDay = null; renderToday(); break;
+    case 'today': pendingSelectedDay = null; pendingReadiness = null; renderToday(); break;
     case 'schedule': renderSchedule(); break;
     case 'program': renderProgram(); break;
     case 'graphs': renderGraphs(); break;
     case 'progress': renderProgress(); break;
     case 'history': renderHistory(); break;
     case 'plates': renderPlates(); break;
+    case 'legs': legs_renderPage(); break;
     case 'settings': renderSettings(); break;
   }
 }
@@ -1371,6 +1550,30 @@ function renderDaySelector(el, d, week, structure) {
 
   html += `</div>`;
 
+  // ── Road to 300 mini-card (show when ≥1 heavy single logged) ──────────
+  const impl1RMHistory = getImplied1RMHistory(d);
+  if (impl1RMHistory.length >= 1) {
+    const lastRM = impl1RMHistory[impl1RMHistory.length - 1].rm;
+    const goal = d.settings.goal || 300;
+    const pctToGoal = Math.min(100, Math.round(lastRM / goal * 100));
+    const projDate = projectGoalDate(impl1RMHistory, goal);
+    const projStr = projDate
+      ? projDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      : (impl1RMHistory.length < 2 ? '— (need more data)' : '—');
+    html += `
+    <div class="card" style="margin-top:20px">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:0">Road to 300</div>
+        <div style="text-align:right">
+          <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Last Single 1RM</div>
+          <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--accent); line-height:1">${lastRM} lbs</div>
+          <div style="font-size:11px; color:var(--muted)">${pctToGoal}% of goal</div>
+        </div>
+      </div>
+      ${render300Chart(impl1RMHistory, goal)}
+    </div>`;
+  }
+
   // If all days for this week are logged, show "Start Next Week" button
   const totalDays = structure.length;
   const allDone = structure.every((_, idx) =>
@@ -1390,9 +1593,10 @@ function renderDaySelector(el, d, week, structure) {
 
 function startWorkout(dayNum) {
   pendingSelectedDay = dayNum;
+  pendingReadiness = null; // reset readiness whenever a new day is started
   // Save immediately so a page refresh remembers the selection
   localStorage.setItem('iron300_pending', JSON.stringify({
-    statuses: {}, efforts: {}, notes: '', selectedDay: dayNum
+    statuses: {}, efforts: {}, notes: '', selectedDay: dayNum, readiness: null
   }));
   renderToday();
 }
@@ -1407,8 +1611,20 @@ function cancelWorkout() {
   pendingNotes = '';
   pendingEfforts = {};
   pendingSelectedDay = null;
+  pendingReadiness = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
+  renderToday();
+}
+
+function setReadiness(level) {
+  pendingReadiness = level;
+  // Persist so a page refresh keeps the readiness state
+  try {
+    const saved = JSON.parse(localStorage.getItem('iron300_pending') || '{}');
+    saved.readiness = level;
+    localStorage.setItem('iron300_pending', JSON.stringify(saved));
+  } catch(e) {}
   renderToday();
 }
 
@@ -1452,8 +1668,62 @@ function renderToday() {
   // Check if this day was already logged this week (shouldn't happen in normal flow, but handle it)
   const todayLog = d.workoutLogs.find(l => l.week === week && l.day === pendingSelectedDay);
 
+  // Show readiness check before the workout loads (skip if already logged)
+  if (!pendingReadiness && !todayLog) {
+    el.innerHTML = `
+      <div style="max-width:420px; margin:0 auto; padding-top:8px">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+            <div>
+              <div class="card-title" style="margin-bottom:2px">${dayDef.label}</div>
+              <div style="font-size:12px; color:var(--muted)">Week ${week} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
+            </div>
+            <button onclick="cancelWorkout()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; padding:6px 14px; border-radius:6px">← Back</button>
+          </div>
+
+          <div style="text-align:center; margin-bottom:24px">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:2px; color:var(--accent); margin-bottom:8px">HOW DO YOU FEEL TODAY?</div>
+            <div style="font-size:14px; color:var(--muted); line-height:1.6">Be honest — this protects your joints and your long-term progress.</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <button onclick="setReadiness('fresh')" style="display:flex; align-items:center; gap:14px; background:rgba(22,163,74,0.08); border:2px solid var(--green); border-radius:10px; padding:16px 20px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s">
+              <span style="font-size:24px">🟢</span>
+              <div>
+                <div style="font-weight:700; font-size:15px; color:var(--green)">Fresh</div>
+                <div style="font-size:12px; color:var(--muted)">Rested, motivated, ready to push. Normal weights.</div>
+              </div>
+            </button>
+
+            <button onclick="setReadiness('normal')" style="display:flex; align-items:center; gap:14px; background:rgba(91,107,138,0.08); border:2px solid var(--blue-grey); border-radius:10px; padding:16px 20px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s">
+              <span style="font-size:24px">🟡</span>
+              <div>
+                <div style="font-weight:700; font-size:15px; color:var(--blue-grey)">Normal</div>
+                <div style="font-size:12px; color:var(--muted)">Feeling decent. Maybe a little tired, but no issues. Normal weights.</div>
+              </div>
+            </button>
+
+            <button onclick="setReadiness('beatup')" style="display:flex; align-items:center; gap:14px; background:rgba(239,68,68,0.06); border:2px solid var(--red); border-radius:10px; padding:16px 20px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s">
+              <span style="font-size:24px">🔴</span>
+              <div>
+                <div style="font-weight:700; font-size:15px; color:var(--red)">Beat Up</div>
+                <div style="font-size:12px; color:var(--muted)">Sore, run-down, or joints are talking. Weights auto-drop 5% — no deload triggered.</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
   const focusLabels = { heavy: 'HEAVY DAY', volume: 'VOLUME DAY', paused: 'PAUSED DAY', ohp: 'OHP DAY' };
   const focusBadge = focusLabels[dayDef.benchFocus] || 'ACCESSORY';
+
+  // Readiness-based weight modifier (5% drop when beat up, session only — no deload triggered)
+  const beatUp = pendingReadiness === 'beatup' && !todayLog;
+  const barWeight = d.settings.barWeight;
+  const smallestPlate = d.settings.smallestPlate;
+  const effectiveTM = beatUp ? roundToPlate(d.trainingMax * 0.95, barWeight, smallestPlate) : d.trainingMax;
 
   let html = `
     <div class="day-header">
@@ -1464,8 +1734,19 @@ function renderToday() {
       <div style="display:flex; gap:8px; align-items:center">
         <button onclick="cancelWorkout()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; padding:6px 14px; border-radius:6px">← Select Day</button>
         ${week % 5 === 0 ? '<span class="deload-badge">Deload Week</span>' : `<span class="day-badge">${focusBadge}</span>`}
+        ${beatUp ? '<span style="font-family:\'DM Sans\',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--red); background:rgba(239,68,68,0.1); border:1px solid var(--red); padding:4px 10px; border-radius:4px">BEAT UP −5%</span>' : ''}
       </div>
     </div>`;
+
+  if (beatUp) {
+    html += `<div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:8px; padding:12px 16px; margin-bottom:4px; display:flex; align-items:center; gap:10px">
+      <span style="font-size:18px">🔴</span>
+      <div>
+        <div style="font-size:13px; font-weight:700; color:var(--red)">Beat Up Mode — weights reduced 5%</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px">Train smart today. No deload triggered — just protecting you from a bad session.</div>
+      </div>
+    </div>`;
+  }
 
   if (todayLog) {
     html += `<div class="alert alert-success">✓ Workout logged! <a href="#" onclick="showPage('history')" style="color:var(--green)">View in History</a> — <a href="#" onclick="unlockToday()" style="color:var(--green)">Edit</a></div>`;
@@ -1502,12 +1783,11 @@ function renderToday() {
   // BENCH / OHP SECTION
   if (dayDef.benchFocus) {
     const isDeload = (week % 5 === 0);
-    const barWeight = d.settings.barWeight;
-    const smallestPlate = d.settings.smallestPlate;
 
     if (dayDef.benchFocus === 'ohp') {
       // ── OHP DAY ──
-      const ohpWeight = d.ohpWeight || 90;
+      const baseOhpWeight = d.ohpWeight || 90;
+      const ohpWeight = beatUp ? roundToPlate(baseOhpWeight * 0.95, barWeight, smallestPlate) : baseOhpWeight;
       const ohpRepsPerSet = d.ohpRepsPerSet || 5;
       const ohpInfo = generateOHPSets(week, ohpWeight, ohpRepsPerSet, barWeight, smallestPlate);
       const loggedOHP = todayLog?.exercises?.find(e => e.name === 'Overhead Press');
@@ -1521,7 +1801,7 @@ function renderToday() {
           <div class="card-title" style="margin-bottom:0">Overhead Press</div>
           ${isDeload ? '<span class="deload-badge">DELOAD</span>' : '<span class="day-badge">SHOULDER STRENGTH</span>'}
         </div>
-        <div style="font-size:12px; color:var(--muted); margin-bottom:14px">${ohpInfo.label} · Current weight: <span style="color:var(--accent)">${ohpWeight} lbs</span></div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:14px">${ohpInfo.label} · Current weight: <span style="color:${beatUp ? 'var(--red)' : 'var(--accent)'}">${ohpWeight} lbs${beatUp ? ' <span style="font-size:10px">(−5%)</span>' : ''}</span></div>
 
         <div style="font-size:12px; color:var(--muted); margin-bottom:10px; padding:8px 12px; background:var(--surface2); border-radius:4px">
           <strong style="color:var(--text)">Warmup:</strong>
@@ -1572,10 +1852,17 @@ function renderToday() {
 
     } else {
       // ── BENCH DAY (heavy / volume / paused) ──
-      const volOverride = dayDef.benchFocus === 'volume' ? d.volumeDayWeight : undefined;
-      const benchInfo = generateBenchSets(dayDef.benchFocus, week, d.trainingMax, barWeight, smallestPlate, volOverride);
+      // For beat-up: reduce volume day weight by 5% too (it's a separate stored value)
+      const baseVolWeight = d.volumeDayWeight;
+      const volOverride = dayDef.benchFocus === 'volume'
+        ? (beatUp && baseVolWeight ? roundToPlate(baseVolWeight * 0.95, barWeight, smallestPlate) : baseVolWeight)
+        : undefined;
+      const benchInfo = generateBenchSets(dayDef.benchFocus, week, effectiveTM, barWeight, smallestPlate, volOverride);
       const prevFail = (d.failStreak['Bench Press'] || 0) >= 2;
       const loggedBench = todayLog?.exercises?.find(e => e.name === 'Bench Press');
+      const tmDisplay = beatUp
+        ? `<span style="color:var(--red)">${effectiveTM} lbs <span style="font-size:10px; opacity:0.8">(${d.trainingMax} −5%)</span></span>`
+        : `<span style="color:var(--accent)">${d.trainingMax} lbs</span>`;
 
       html += `<div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
@@ -1584,7 +1871,7 @@ function renderToday() {
             ${isDeload ? '<span class="deload-badge">DELOAD</span>' : `<span class="day-badge">${benchInfo.label}</span>`}
           </div>
         </div>
-        <div style="font-size:12px; color:var(--muted); margin-bottom:14px">Training Max: <span style="color:var(--accent)">${d.trainingMax} lbs</span> · Week ${week} · Goal: <span style="color:var(--accent)">${d.settings.goal} lbs</span>${d.lastHeavySingle ? ` · Last single: <span style="color:var(--green)">${d.lastHeavySingle} lbs</span>` : ''}</div>`;
+        <div style="font-size:12px; color:var(--muted); margin-bottom:14px">Training Max: ${tmDisplay} · Week ${week} · Goal: <span style="color:var(--accent)">${d.settings.goal} lbs</span>${d.lastHeavySingle ? ` · Last single: <span style="color:var(--green)">${d.lastHeavySingle} lbs</span>` : ''}</div>`;
 
       if (prevFail) {
         html += `<div class="alert alert-warn">⚠ You've missed the single twice in a row. Weight has been reduced. Build back up — the PR is coming.</div>`;
@@ -1715,6 +2002,10 @@ function renderToday() {
     const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
     const loggedEx = todayLog?.exercises?.find(e => e.name === exName);
     const prevEx = prevWeekLog?.exercises?.find(e => e.name === exName);
+    // Beat-up: display 5% reduced weight (rounded correctly per group type)
+    const awDisplayWeight = beatUp && !loggedEx
+      ? roundWeight(aw.weight * 0.95, exDef.group, barWeight, smallestPlate)
+      : aw.weight;
 
     html += `<div class="exercise-block">
       <div class="exercise-header">
@@ -1724,7 +2015,7 @@ function renderToday() {
         </div>
         <div style="text-align:right">
           <div class="ex-target-label">Target</div>
-          <div class="ex-target">${aw.weight} lbs × ${aw.repTarget}</div>
+          <div class="ex-target" style="${beatUp && !loggedEx ? 'color:var(--red)' : ''}">${awDisplayWeight} lbs × ${aw.repTarget}</div>
           <div style="font-size:9px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:1px">${exDef.failProtocol} mvt</div>
         </div>
       </div>
@@ -1777,7 +2068,7 @@ function renderToday() {
 
       html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
         <div class="set-num">S${si+1}</div>
-        <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : aw.weight}" ${todayLog?'readonly':''} /></div>
+        <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : awDisplayWeight}" ${todayLog?'readonly':''} /></div>
         <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : aw.repTarget}" ${todayLog?'readonly':''} /></div>
         <button class="set-status-btn ${statusClass}" id="ex-${exIdx}-s-${si}" onclick="toggleAssistStatus(${exIdx},${si})" ${todayLog?'disabled':''} style="${isSkipped?'opacity:0.4':''}">
           ${statusText}
@@ -1824,6 +2115,7 @@ let pendingStatuses = {}; // 'bench-0': {done:bool, fail:bool}
 let pendingNotes = '';    // workout notes before logging
 let pendingEfforts = {};  // 'exIdx-setIdx': 'easy'|'ok'|'hard'
 let pendingSelectedDay = null; // which day the user chose to do today (1-indexed)
+let pendingReadiness = null;   // 'fresh'|'normal'|'beatup' — set before each session loads
 
 // When the user edits the single weight, auto-update the 4 back-off inputs to 85% of that
 function updateBackOffsFromSingle(singleW) {
@@ -1847,7 +2139,7 @@ function setEffort(exIdx, setIdx, effort) {
       b.className = 'effort-btn' + (b.dataset.effort === effort ? ' selected-' + effort : '');
     });
   }
-  localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, notes: pendingNotes, selectedDay: pendingSelectedDay }));
+  localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, notes: pendingNotes, selectedDay: pendingSelectedDay, readiness: pendingReadiness }));
 }
 
 function moveDayUp(index) {
@@ -1945,7 +2237,7 @@ function autoSavePending() {
     document.querySelectorAll('[id^="bench-w-"],[id^="bench-r-"],[id^="ohp-w-"],[id^="ohp-r-"],[id^="ex-"]').forEach(el => {
       if (el.tagName === 'INPUT') inputs[el.id] = el.value;
     });
-    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, inputs, notes: pendingNotes, selectedDay: pendingSelectedDay }));
+    localStorage.setItem('iron300_pending', JSON.stringify({ statuses: pendingStatuses, efforts: pendingEfforts, inputs, notes: pendingNotes, selectedDay: pendingSelectedDay, readiness: pendingReadiness }));
   } catch(e) {}
 }
 
@@ -1958,6 +2250,7 @@ function restorePending() {
     pendingNotes = saved.notes || '';
     pendingSelectedDay = saved.selectedDay || null;
     pendingEfforts = saved.efforts || {};
+    pendingReadiness = saved.readiness || null;
     setTimeout(() => {
       Object.entries(pendingStatuses).forEach(([key, s]) => {
         let btnId;
@@ -2370,6 +2663,7 @@ function logWorkout() {
   pendingNotes = '';
   pendingEfforts = {};
   pendingSelectedDay = null;
+  pendingReadiness = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
   clearSwapOverride(); // clear any OHP swap after logging
@@ -2428,6 +2722,7 @@ function advanceDay() {
   saveData(d);
   pendingStatuses = {};
   pendingSelectedDay = null;
+  pendingReadiness = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
   renderToday();
@@ -2452,6 +2747,7 @@ function skipWorkout() {
     pendingNotes = '';
     pendingEfforts = {};
     pendingSelectedDay = null;
+    pendingReadiness = null;
     localStorage.removeItem('iron300_pending');
     stopRestTimer();
     renderToday();
@@ -2468,6 +2764,7 @@ function unlockToday() {
   pendingNotes = '';
   pendingEfforts = {};
   pendingSelectedDay = null;
+  pendingReadiness = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
   renderToday();
@@ -2651,6 +2948,146 @@ function calcConsistency(workoutLogs, currentWeek) {
 // RENDER PROGRESS
 // ═══════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════
+// RENDER 300 PROGRESS CHART
+// ═══════════════════════════════════════════════════════════
+
+// Returns an HTML string: SVG line+trendline+goal chart + projection callout.
+// history = [{date, week, rm}], goal = target 1RM
+function render300Chart(history, goal) {
+  if (!history || history.length === 0) return '';
+
+  const ACCENT    = '#e8b84b';  // gold  – actual data
+  const TREND_CLR = '#60a5fa';  // blue  – trendline
+  const GOAL_CLR  = '#f97316';  // amber – goal line
+
+  // ── Regression & projection ──────────────────────────────
+  const reg = history.length >= 2
+    ? linearRegression(history.map(function(h) { return { x: h.week, y: h.rm }; }))
+    : null;
+  const projDate = projectGoalDate(history, goal);
+
+  // ── X (week) domain ──────────────────────────────────────
+  const weekMin = history[0].week;
+  const weekMax = history[history.length - 1].week;
+  const weekSpan = Math.max(weekMax - weekMin, 1);
+  const weekAtGoal = (reg && reg.slope > 0) ? (goal - reg.intercept) / reg.slope : null;
+
+  // Extend right edge: show trendline crossing goal if ≤4 more spans away
+  let svgWeekMax;
+  if (weekAtGoal && weekAtGoal > weekMax && weekAtGoal < weekMax + weekSpan * 4 + 8) {
+    svgWeekMax = weekAtGoal + weekSpan * 0.05;
+  } else {
+    svgWeekMax = weekMax + Math.max(weekSpan * 0.25, 1.5);
+  }
+  const svgWeekMin = weekMin - Math.max(weekSpan * 0.04, 0.3);
+  const svgWeekRange = svgWeekMax - svgWeekMin;
+
+  // ── Y (1RM) domain ───────────────────────────────────────
+  const rms = history.map(function(h) { return h.rm; });
+  const rmMin = Math.min.apply(null, rms);
+  const rmMax = Math.max(Math.max.apply(null, rms), goal);
+  const rmPad = Math.max((rmMax - rmMin) * 0.18, 12);
+  const yMin = Math.max(0, rmMin - rmPad);
+  const yMax = rmMax + rmPad;
+  const yRange = yMax - yMin;
+
+  // ── Coordinate helpers (user-space 0-100) ────────────────
+  function px(week) { return 2 + ((week - svgWeekMin) / svgWeekRange) * 94; }
+  function py(rm)   { return 95 - ((rm - yMin) / yRange) * 85; }
+
+  // ── Area path under actual data ──────────────────────────
+  const ptStrs = history.map(function(h) { return px(h.week).toFixed(2) + ',' + py(h.rm).toFixed(2); });
+  const fX0 = px(history[0].week).toFixed(2);
+  const fXn = px(history[history.length-1].week).toFixed(2);
+  const areaPath = 'M ' + fX0 + ',95 L ' + ptStrs.join(' L ') + ' L ' + fXn + ',95 Z';
+
+  // ── Goal horizontal line ──────────────────────────────────
+  const goalY = py(goal).toFixed(2);
+  const goalLineHTML = '<line x1="2" y1="' + goalY + '" x2="96" y2="' + goalY +
+    '" stroke="' + GOAL_CLR + '" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.75"/>' +
+    '<text x="97" y="' + (parseFloat(goalY) + 1).toFixed(1) + '" fill="' + GOAL_CLR +
+    '" font-size="5" font-family="DM Mono,monospace" dominant-baseline="middle">300</text>';
+
+  // ── Trendline ─────────────────────────────────────────────
+  let trendLineHTML = '';
+  if (reg) {
+    const tx1 = px(svgWeekMin + svgWeekRange * 0.01);
+    const ty1 = py(reg.slope * (svgWeekMin + svgWeekRange * 0.01) + reg.intercept);
+    const tx2End = (weekAtGoal && weekAtGoal <= svgWeekMax) ? weekAtGoal : (svgWeekMax - svgWeekRange * 0.01);
+    const tx2 = px(tx2End);
+    const ty2 = py(reg.slope * tx2End + reg.intercept);
+    trendLineHTML = '<line x1="' + tx1.toFixed(2) + '" y1="' + ty1.toFixed(2) +
+      '" x2="' + tx2.toFixed(2) + '" y2="' + ty2.toFixed(2) +
+      '" stroke="' + TREND_CLR + '" stroke-width="0.9" stroke-dasharray="2.5,2" opacity="0.75"/>';
+    // Projected crossing dot
+    if (weekAtGoal && weekAtGoal <= svgWeekMax) {
+      const cx2 = px(weekAtGoal).toFixed(2), cy2 = goalY;
+      trendLineHTML += '<circle cx="' + cx2 + '" cy="' + cy2 + '" r="3.5" fill="none" stroke="' + GOAL_CLR + '" stroke-width="1.5" opacity="0.9"/>';
+    }
+  }
+
+  // ── Data points ───────────────────────────────────────────
+  let dots = '';
+  history.forEach(function(h) {
+    const cx = px(h.week).toFixed(2), cy = py(h.rm).toFixed(2);
+    dots += '<circle cx="' + cx + '" cy="' + cy + '" r="2.8" fill="' + ACCENT +
+      '" stroke="var(--bg)" stroke-width="0.8"><title>Wk ' + h.week + ': ' + h.rm + ' lbs</title></circle>';
+  });
+
+  // ── SVG ───────────────────────────────────────────────────
+  const svgHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%; height:130px; overflow:visible">' +
+    '<defs>' +
+    '<linearGradient id="grad300" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="' + ACCENT + '" stop-opacity="0.22"/>' +
+    '<stop offset="100%" stop-color="' + ACCENT + '" stop-opacity="0.02"/>' +
+    '</linearGradient></defs>' +
+    '<path d="' + areaPath + '" fill="url(#grad300)" stroke="none"/>' +
+    goalLineHTML +
+    trendLineHTML +
+    '<polyline points="' + ptStrs.join(' ') + '" fill="none" stroke="' + ACCENT + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+    dots +
+    '</svg>';
+
+  // ── Y-axis labels ─────────────────────────────────────────
+  const yTopLabel = Math.round(yMax);
+  const yBotLabel = Math.round(yMin);
+
+  const chartWrap = '<div style="position:relative">' +
+    '<div style="position:absolute; left:0; top:0; bottom:0; width:28px; display:flex; flex-direction:column; justify-content:space-between; padding:4px 0">' +
+    '<div style="font-size:9px; color:var(--muted); font-family:\'DM Mono\',monospace; text-align:right">' + yTopLabel + '</div>' +
+    '<div style="font-size:9px; color:var(--muted); font-family:\'DM Mono\',monospace; text-align:right">' + yBotLabel + '</div>' +
+    '</div>' +
+    '<div style="margin-left:34px">' + svgHTML + '</div>' +
+    '</div>';
+
+  // ── Legend ────────────────────────────────────────────────
+  const legendHTML = '<div style="display:flex; gap:14px; margin-top:6px; flex-wrap:wrap">' +
+    '<div style="display:flex; align-items:center; gap:5px"><div style="width:14px; height:2px; background:' + ACCENT + '"></div><span style="font-size:11px; color:var(--muted)">Implied 1RM</span></div>' +
+    '<div style="display:flex; align-items:center; gap:5px"><div style="width:14px; height:0; border-top:2px dashed ' + TREND_CLR + '"></div><span style="font-size:11px; color:var(--muted)">Trend</span></div>' +
+    '<div style="display:flex; align-items:center; gap:5px"><div style="width:14px; height:0; border-top:2px dashed ' + GOAL_CLR + '"></div><span style="font-size:11px; color:var(--muted)">Goal 300</span></div>' +
+    '</div>';
+
+  // ── Projection callout ────────────────────────────────────
+  let projHTML = '';
+  if (projDate) {
+    const dateStr = projDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const rateStr = reg ? '+' + reg.slope.toFixed(1) + ' lbs/wk' : '';
+    projHTML = '<div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding:10px 14px; background:var(--surface2); border-radius:8px; border-left:3px solid ' + GOAL_CLR + '">' +
+      '<div><div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px">Projected to hit 300</div>' +
+      '<div style="font-family:\'Bebas Neue\',sans-serif; font-size:26px; color:' + GOAL_CLR + '; line-height:1.1">' + dateStr + '</div></div>' +
+      '<div style="text-align:right"><div style="font-size:10px; color:var(--muted)">at current rate</div>' +
+      '<div style="font-size:14px; color:var(--text); font-family:\'DM Mono\',monospace; margin-top:2px">' + rateStr + '</div></div>' +
+      '</div>';
+  } else if (history.length === 1) {
+    projHTML = '<div style="margin-top:8px; font-size:12px; color:var(--muted); text-align:center">Log another heavy single to see your trendline.</div>';
+  } else if (reg && reg.slope <= 0) {
+    projHTML = '<div style="margin-top:8px; font-size:12px; color:var(--muted); text-align:center">Trend is flat or declining — keep training consistently.</div>';
+  }
+
+  return chartWrap + legendHTML + projHTML;
+}
+
 function renderProgress() {
   const d = loadData();
   const el = document.getElementById('progress-content');
@@ -2665,41 +3102,37 @@ function renderProgress() {
   const current1RM = d.trainingMax ? Math.round(d.trainingMax / 0.935 / 5) * 5 : (d.estimated1RM || 0);
   const pctToGoal = Math.min(100, Math.round(current1RM / goal * 100));
 
-  // Calculate 1RM history from bench logs
-  const benchHistory = d.workoutLogs
-    .map(log => {
-      const bench = log.exercises?.find(e => e.name === 'Bench Press');
-      if (!bench) return null;
-      const best = bench.sets.filter(s => !s.fail).reduce((best, s) => {
-        const rm = calc1RM(s.weight, s.reps);
-        return rm > best ? rm : best;
-      }, 0);
-      return best > 0 ? { week: log.week, day: log.day, date: log.date, rm: best } : null;
-    })
-    .filter(Boolean);
+  // Implied 1RM history from heavy singles (RPE-based)
+  const impliedHistory = getImplied1RMHistory(d);
+  const gained1RM = impliedHistory.length > 1
+    ? impliedHistory[impliedHistory.length-1].rm - impliedHistory[0].rm
+    : null;
 
+  // ── Road to 300 card — full chart ────────────────────────────────────
   let html = `
     <div class="card">
-      <div class="card-title">Road to 300</div>
-      <div style="display:flex; gap:16px; align-items:center; margin-bottom:16px; flex-wrap:wrap">
-        <div class="big-lift" style="flex:1; min-width:120px">
-          <div class="big-lift-num">${current1RM || '—'}</div>
-          <div class="big-lift-unit">LBS</div>
-          <div class="big-lift-label">Estimated 1RM</div>
-        </div>
-        <div style="flex:2; min-width:200px">
-          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px">
-            <span>Current: ${current1RM} lbs</span><span>Goal: ${goal} lbs</span>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; flex-wrap:wrap; gap:12px">
+        <div class="card-title" style="margin-bottom:0">Road to 300</div>
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
+          <div style="text-align:center">
+            <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px">Current 1RM</div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--accent); line-height:1">${current1RM || '—'} lbs</div>
           </div>
-          <div class="progress-bar-wrap" style="height:16px">
-            <div class="progress-bar-fill" style="width:${pctToGoal}%"></div>
-          </div>
-          <div style="text-align:center; font-family:'Bebas Neue',sans-serif; font-size:36px; color:var(--accent); margin-top:8px">${pctToGoal}%</div>
-          <div style="text-align:center; font-size:12px; color:var(--muted)">
-            ${goal - current1RM > 0 ? `${goal - current1RM} lbs to go` : '🎉 Goal Reached!'}
+          <div style="text-align:center">
+            <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px">To Go</div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--blue-grey); line-height:1">
+              ${goal - current1RM > 0 ? (goal - current1RM) + ' lbs' : '🎉 Done'}
+            </div>
           </div>
         </div>
       </div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px">
+        <span>${current1RM} lbs</span><span>Goal: ${goal} lbs</span>
+      </div>
+      <div class="progress-bar-wrap" style="height:10px; margin-bottom:14px">
+        <div class="progress-bar-fill" style="width:${pctToGoal}%"></div>
+      </div>
+      ${render300Chart(impliedHistory, goal)}
     </div>`;
 
   // Stats
@@ -2711,7 +3144,7 @@ function renderProgress() {
     <div class="stat-box"><div class="stat-box-val">${d.workoutLogs.length}</div><div class="stat-box-label">Workouts Done</div></div>
     <div class="stat-box"><div class="stat-box-val">${d.currentWeek}</div><div class="stat-box-label">Weeks In</div></div>
     <div class="stat-box"><div class="stat-box-val">${d.trainingMax}</div><div class="stat-box-label">Training Max</div></div>
-    <div class="stat-box"><div class="stat-box-val">${benchHistory.length > 1 ? '+' + (benchHistory[benchHistory.length-1].rm - benchHistory[0].rm) : '—'}</div><div class="stat-box-label">1RM Gained (lbs)</div></div>
+    <div class="stat-box"><div class="stat-box-val">${gained1RM !== null ? '+' + gained1RM : '—'}</div><div class="stat-box-label">1RM Gained (lbs)</div></div>
   </div>`;
 
   // Consistency card
@@ -2734,47 +3167,6 @@ function renderProgress() {
       </div>
     </div>
   </div>`;
-
-  // 1RM History
-  if (benchHistory.length > 0) {
-    html += `<div class="card">
-      <div class="card-title">Bench Press 1RM History</div>`;
-
-    const maxRM = Math.max(...benchHistory.map(h => h.rm), goal);
-    html += `<div style="position:relative; height:140px; border-left:1px solid var(--border); border-bottom:1px solid var(--border); margin: 0 0 8px 30px">`;
-
-    benchHistory.forEach((h, i) => {
-      const x = benchHistory.length === 1 ? 50 : (i / (benchHistory.length - 1)) * 100;
-      const y = 100 - (h.rm / maxRM) * 90;
-      html += `<div style="position:absolute; left:${x}%; bottom:${(h.rm/maxRM)*90}%; transform:translate(-50%,50%)">
-        <div style="width:8px; height:8px; background:var(--accent); border-radius:50%;"></div>
-        <div style="font-size:9px; color:var(--muted); text-align:center; margin-top:2px">${h.rm}</div>
-      </div>`;
-    });
-
-    // Goal line
-    const goalY = (goal / maxRM) * 90;
-    html += `<div style="position:absolute; bottom:${goalY}%; left:0; right:0; border-top:1px dashed var(--accent2); opacity:0.5"></div>
-      <div style="position:absolute; bottom:${goalY}%; right:4px; font-size:9px; color:var(--accent2)">GOAL</div>`;
-
-    html += `</div>
-      <div style="font-size:11px; color:var(--muted); text-align:center; margin-top:4px">Each dot = 1 bench session logged</div>
-    </div>`;
-  }
-
-  // Projected timeline
-  if (benchHistory.length >= 2) {
-    const avgGainPerWeek = (benchHistory[benchHistory.length-1].rm - benchHistory[0].rm) / Math.max(1, d.currentWeek - 1);
-    const weeksLeft = avgGainPerWeek > 0 ? Math.ceil((goal - current1RM) / avgGainPerWeek) : null;
-
-    if (weeksLeft && weeksLeft > 0) {
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + weeksLeft * 7);
-      html += `<div class="note-box">
-        <strong>Projected Timeline:</strong> Based on your current rate of ~${avgGainPerWeek.toFixed(1)} lbs/week, you'll hit ${goal} lbs around <strong>${targetDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</strong> (${weeksLeft} weeks).
-      </div>`;
-    }
-  }
 
   el.innerHTML = html;
 }
@@ -2901,6 +3293,20 @@ function updateHeader() {
     }
   }
   if (pctEl && rm) pctEl.textContent = Math.min(100, Math.round(rm / goal * 100)) + '%';
+
+  // ETA stat — only shown on wider screens (CSS hides it on <600px anyway)
+  const etaWrap = document.getElementById('header-eta-wrap');
+  const etaEl   = document.getElementById('header-eta');
+  if (etaWrap && etaEl) {
+    const implH = getImplied1RMHistory(d);
+    const proj  = projectGoalDate(implH, goal);
+    if (proj) {
+      etaEl.textContent = proj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      etaWrap.style.display = '';
+    } else {
+      etaWrap.style.display = 'none';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3836,6 +4242,13 @@ function renderSettings() {
   if (barEl)  barEl.value  = d.settings.barWeight    || 45;
   if (platEl) platEl.value = d.settings.smallestPlate || 2.5;
 
+  // Populate legs equipment fields
+  const legsData = legs_loadData();
+  const legsPlateEl   = document.getElementById('legs-set-plate');
+  const legsCurlIncEl = document.getElementById('legs-set-curl-inc');
+  if (legsPlateEl)   legsPlateEl.value   = legsData.settings.smallestPlate;
+  if (legsCurlIncEl) legsCurlIncEl.value = legsData.settings.legCurlIncrement;
+
   // ── Render assistance weights editor ──
   const editorEl = document.getElementById('assistance-weights-editor');
   if (editorEl) {
@@ -3886,6 +4299,501 @@ function saveAssistanceWeights() {
   });
   saveData(d);
   showToast('Assistance weights saved ✓');
+}
+
+// ═══════════════════════════════════════════════════════════
+// LEGS TAB
+// ═══════════════════════════════════════════════════════════
+
+const LEGS_DATA_KEY = 'legs_data';
+
+function legs_defaultData() {
+  return {
+    hackSquat: { weight: 10,  sessions: [] },
+    legCurl:   { weight: 55,  sessions: [] },
+    settings:  { smallestPlate: 2.5, legCurlIncrement: 5 }
+  };
+}
+
+function legs_loadData() {
+  try {
+    const raw = localStorage.getItem(LEGS_DATA_KEY);
+    if (!raw) return legs_defaultData();
+    const d = JSON.parse(raw);
+    if (!d.hackSquat)  d.hackSquat  = { weight: 10, sessions: [] };
+    if (!d.legCurl)    d.legCurl    = { weight: 55, sessions: [] };
+    if (!d.settings)   d.settings   = { smallestPlate: 2.5, legCurlIncrement: 5 };
+    if (d.settings.smallestPlate  === undefined) d.settings.smallestPlate  = 2.5;
+    if (d.settings.legCurlIncrement === undefined) d.settings.legCurlIncrement = 5;
+    return d;
+  } catch(e) { return legs_defaultData(); }
+}
+
+function legs_saveData(d) {
+  // Strip legacy GitHub credentials that may be in old legs_data (we use main app creds now)
+  delete d.ghToken; delete d.ghUser; delete d.ghRepo;
+  localStorage.setItem(LEGS_DATA_KEY, JSON.stringify(d));
+}
+
+// State (legs-namespaced to avoid collisions with main app)
+let legsActiveWorkout = null; // 'hackSquat' | 'legCurl' | null
+let legsSetStatuses   = {};   // { setIndex: 'done'|'fail' }
+let legsSelectedRPE   = null;
+let legsSubPage       = 'today'; // 'today' | 'history'
+
+function legs_renderPage() {
+  legsActiveWorkout = null;
+  legsSetStatuses   = {};
+  legsSelectedRPE   = null;
+  legsSubPage       = 'today';
+  legs_render();
+}
+
+function legs_showSubPage(name) {
+  legsSubPage = name;
+  if (name === 'today') {
+    legsActiveWorkout = null; legsSetStatuses = {}; legsSelectedRPE = null;
+  }
+  legs_render();
+}
+
+function legs_render() {
+  const el = document.getElementById('legs-content');
+  if (!el) return;
+
+  // Build sub-nav
+  const subNav = `
+    <div style="display:flex; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:0">
+      <button onclick="legs_showSubPage('today')" style="font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; padding:8px 16px; background:none; border:none; cursor:pointer; border-bottom:2px solid ${legsSubPage==='today'?'var(--accent)':'transparent'}; color:${legsSubPage==='today'?'var(--accent)':'var(--muted)'}; margin-bottom:-1px">Today</button>
+      <button onclick="legs_showSubPage('history')" style="font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; padding:8px 16px; background:none; border:none; cursor:pointer; border-bottom:2px solid ${legsSubPage==='history'?'var(--accent)':'transparent'}; color:${legsSubPage==='history'?'var(--accent)':'var(--muted)'}; margin-bottom:-1px">History</button>
+    </div>`;
+
+  el.innerHTML = subNav + (legsSubPage === 'history' ? legs_buildHistory() : legs_buildToday());
+
+  // Attach live listeners for leg curl reps after DOM is built
+  if (legsSubPage === 'today' && legsActiveWorkout === 'legCurl') {
+    for (let i = 0; i < 3; i++) {
+      const ri = document.getElementById('curl-r-' + i);
+      if (ri) ri.addEventListener('input', legs_updateCurlNote);
+    }
+  }
+}
+
+// ── Weekly volume strip ──────────────────────────────────────
+function legs_weeklyStats() {
+  const d = legs_loadData();
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay()); // Sunday
+  weekStart.setHours(0,0,0,0);
+
+  let sqSets = 0, curlSets = 0;
+  d.hackSquat.sessions.forEach(s => {
+    if (new Date(s.date) >= weekStart) sqSets += (s.sets ? s.sets.length : 5);
+  });
+  d.legCurl.sessions.forEach(s => {
+    if (new Date(s.date) >= weekStart) curlSets += (s.sets ? s.sets.length : 3);
+  });
+
+  const sqSessions = d.hackSquat.sessions.filter(s => new Date(s.date) >= weekStart).length;
+  const curlSessions = d.legCurl.sessions.filter(s => new Date(s.date) >= weekStart).length;
+
+  return { sqSets, curlSets, totalSets: sqSets + curlSets, sqSessions, curlSessions };
+}
+
+// ── Today view ───────────────────────────────────────────────
+function legs_buildToday() {
+  if (legsActiveWorkout === 'hackSquat') return legs_buildHackSquat();
+  if (legsActiveWorkout === 'legCurl')   return legs_buildLegCurl();
+
+  const d = legs_loadData();
+  const stats = legs_weeklyStats();
+  const sqSessions   = d.hackSquat.sessions.length;
+  const curlSessions = d.legCurl.sessions.length;
+  const lastSq   = sqSessions   ? new Date(d.hackSquat.sessions[sqSessions-1].date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'No sessions yet';
+  const lastCurl = curlSessions ? new Date(d.legCurl.sessions[curlSessions-1].date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'No sessions yet';
+
+  return `
+    <div class="legs-week-strip">
+      <div class="legs-stat-box">
+        <div class="legs-stat-val">${stats.sqSessions + stats.curlSessions}</div>
+        <div class="legs-stat-label">Sessions This Week</div>
+      </div>
+      <div class="legs-stat-box">
+        <div class="legs-stat-val">${stats.sqSets}</div>
+        <div class="legs-stat-label">Squat Sets</div>
+      </div>
+      <div class="legs-stat-box">
+        <div class="legs-stat-val">${stats.curlSets}</div>
+        <div class="legs-stat-label">Curl Sets</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px">What are we training today?</div>
+      <div style="font-size:13px; color:var(--muted)">Pick one. Get it done.</div>
+    </div>
+
+    <div class="legs-workout-card" onclick="legs_startWorkout('hackSquat')">
+      <div>
+        <div class="legs-wc-name">Hack Squat</div>
+        <div class="legs-wc-detail">5×5 · RPE-based progression · Last: ${lastSq}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div>
+          <div class="legs-wc-weight">${d.hackSquat.weight}</div>
+          <div class="legs-wc-label">lbs added</div>
+        </div>
+        <div class="legs-wc-arrow">›</div>
+      </div>
+    </div>
+
+    <div class="legs-workout-card" onclick="legs_startWorkout('legCurl')">
+      <div>
+        <div class="legs-wc-name">Lying Leg Curl</div>
+        <div class="legs-wc-detail">3×8–12 · Hit ceiling, move up · Last: ${lastCurl}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div>
+          <div class="legs-wc-weight">${d.legCurl.weight}</div>
+          <div class="legs-wc-label">lbs</div>
+        </div>
+        <div class="legs-wc-arrow">›</div>
+      </div>
+    </div>
+
+    <div style="margin-top:8px; font-size:12px; color:var(--muted); text-align:center">
+      Hack Squat: ${sqSessions} session${sqSessions !== 1 ? 's' : ''} total &nbsp;·&nbsp; Leg Curl: ${curlSessions} session${curlSessions !== 1 ? 's' : ''} total
+    </div>`;
+}
+
+function legs_startWorkout(type) {
+  legsActiveWorkout = type;
+  legsSetStatuses = {};
+  legsSelectedRPE = null;
+  legs_render();
+}
+
+// ── Hack Squat view ─────────────────────────────────────────
+function legs_buildHackSquat() {
+  const d = legs_loadData();
+  const w = d.hackSquat.weight;
+  let setsHtml = '';
+  for (let i = 0; i < 5; i++) {
+    const status  = legsSetStatuses[i] || '';
+    const doneCls = status === 'done' ? ' done' : '';
+    const failCls = status === 'fail' ? ' fail' : '';
+    setsHtml += `
+      <div class="legs-set-row">
+        <div class="set-num">${i+1}</div>
+        <input class="set-input" type="number" id="sq-w-${i}" value="${w}" min="0" step="5">
+        <input class="set-input" type="number" id="sq-r-${i}" value="5" min="0" max="20">
+        <div class="legs-set-status">
+          <button class="legs-status-btn${doneCls}" id="sq-done-${i}" onclick="legs_toggleHackStatus(${i},'done')">Done</button>
+          <button class="legs-status-btn${failCls}" id="sq-fail-${i}" onclick="legs_toggleHackStatus(${i},'fail')">Fail</button>
+        </div>
+      </div>`;
+  }
+  const rpeButtons = ['6','7','8','8.5','9','10'].map(r =>
+    `<button class="legs-rpe-btn${legsSelectedRPE === r ? ' active' : ''}" onclick="legs_selectRPE('${r}')">${r}</button>`
+  ).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <button class="legs-btn-ghost" onclick="legsActiveWorkout=null;legsSetStatuses={};legsSelectedRPE=null;legs_render()">← Back</button>
+      <span class="legs-badge">5×5 Hack Squat</span>
+    </div>
+    <div class="card">
+      <div style="font-size:22px;font-weight:800;color:var(--text)">Hack Squat</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px">Working weight: <strong style="color:var(--accent)">${w} lbs added</strong> · Not counting the sled</div>
+      <div class="legs-info-box"><strong>Progression:</strong> Rate the last set RPE. ≤8 → +${d.settings.smallestPlate*2} lbs next session. 8.5–9 → hold. 10 → −${d.settings.smallestPlate*2} lbs. Consistency beats intensity.</div>
+      <div class="legs-section-label">Warmup</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--blue-grey)">Sled only × 8 <span style="font-size:10px;color:var(--muted);margin-left:4px">feel it out</span></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--blue-grey)">${Math.round(w*0.5/5)*5} lbs × 5 <span style="font-size:10px;color:var(--muted);margin-left:4px">then work sets</span></div>
+      </div>
+      <div class="legs-section-label">Work Sets — 5 × 5</div>
+      <div class="legs-sets-header"><div>Set</div><div>Weight</div><div>Reps</div><div>Status</div></div>
+      ${setsHtml}
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+      <div class="legs-rpe-row">
+        <div class="legs-rpe-label">Last set RPE:</div>
+        ${rpeButtons}
+      </div>
+      <div id="legs-progression-note" style="margin-top:12px"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="legs_logHackSquat()">Log Workout</button>
+      <button class="btn btn-secondary" onclick="legsActiveWorkout=null;legsSetStatuses={};legsSelectedRPE=null;legs_render()">Cancel</button>
+    </div>`;
+}
+
+function legs_toggleHackStatus(idx, type) {
+  if (legsSetStatuses[idx] === type) delete legsSetStatuses[idx];
+  else legsSetStatuses[idx] = type;
+  ['done','fail'].forEach(t => {
+    const btn = document.getElementById('sq-' + t + '-' + idx);
+    if (btn) btn.className = 'legs-status-btn' + (legsSetStatuses[idx] === t ? ' ' + t : '');
+  });
+}
+
+function legs_selectRPE(val) {
+  legsSelectedRPE = val;
+  document.querySelectorAll('.legs-rpe-btn').forEach(b => {
+    b.className = 'legs-rpe-btn' + (b.textContent === val ? ' active' : '');
+  });
+  const note = document.getElementById('legs-progression-note');
+  if (!note) return;
+  const d  = legs_loadData();
+  const w  = d.hackSquat.weight;
+  const sp = d.settings.smallestPlate;
+  const jump = sp * 2;
+  const rpe  = parseFloat(val);
+  let html = '';
+  if (rpe <= 8) {
+    html = `<div class="legs-next-box up" style="display:block">↑ Next session: <strong>${w + jump} lbs added</strong> — moving up ${jump} lbs. Keep it going.</div>`;
+  } else if (rpe <= 9) {
+    html = `<div class="legs-next-box hold" style="display:block">→ Next session: <strong>${w} lbs added</strong> — holding here. That was hard. Respect it.</div>`;
+  } else {
+    html = `<div class="legs-next-box down" style="display:block">↓ Next session: <strong>${Math.max(0, w - jump)} lbs added</strong> — backing off ${jump} lbs. Smart call.</div>`;
+  }
+  note.innerHTML = html;
+}
+
+function legs_logHackSquat() {
+  if (legsSelectedRPE === null) { alert('Please select an RPE before logging.'); return; }
+  const d   = legs_loadData();
+  const w   = d.hackSquat.weight;
+  const sp  = d.settings.smallestPlate;
+  const jump = sp * 2;
+  const rpe  = parseFloat(legsSelectedRPE);
+  const sets = [];
+  for (let i = 0; i < 5; i++) {
+    const wt   = parseFloat(document.getElementById('sq-w-'+i)?.value) || w;
+    const reps = parseInt(document.getElementById('sq-r-'+i)?.value)   || 0;
+    sets.push({ weight: wt, reps, status: legsSetStatuses[i] || 'done' });
+  }
+  let newWeight = w;
+  if (rpe <= 8) newWeight = w + jump;
+  else if (rpe <= 9) newWeight = w;
+  else newWeight = Math.max(0, w - jump);
+
+  d.hackSquat.sessions.push({ date: new Date().toISOString(), sets, rpe: legsSelectedRPE, weightUsed: w });
+  d.hackSquat.weight = newWeight;
+  legs_saveData(d);
+  legs_autoSync();
+
+  const dir = newWeight > w ? '↑' : newWeight < w ? '↓' : '→';
+  legsActiveWorkout = null; legsSetStatuses = {}; legsSelectedRPE = null;
+  const el = document.getElementById('legs-content');
+  if (el) el.innerHTML = document.getElementById('legs-content').innerHTML.split('<div style="display:flex; gap:4px')[0] +
+    `<div style="display:flex; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:0">
+      <button onclick="legs_showSubPage('today')" style="font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; padding:8px 16px; background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; color:var(--muted); margin-bottom:-1px">Today</button>
+      <button onclick="legs_showSubPage('history')" style="font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; padding:8px 16px; background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; color:var(--muted); margin-bottom:-1px">History</button>
+    </div>
+    <div class="card" style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:12px">💪</div>
+      <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px">Hack Squat done.</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:20px">
+        ${w} lbs · RPE ${legsSelectedRPE || rpe}<br>
+        Next session: <strong style="color:var(--accent)">${newWeight} lbs ${dir}</strong>
+      </div>
+      <button class="btn btn-primary" onclick="legs_showSubPage('today')">Back to Today</button>
+    </div>`;
+  // Simpler: just re-render the whole page to show success
+  legsSubPage = 'today';
+  legs_render();
+}
+
+// ── Leg Curl view ────────────────────────────────────────────
+function legs_buildLegCurl() {
+  const d = legs_loadData();
+  const w = d.legCurl.weight;
+  let setsHtml = '';
+  for (let i = 0; i < 3; i++) {
+    const status = legsSetStatuses[i] || '';
+    setsHtml += `
+      <div class="legs-set-row">
+        <div class="set-num">${i+1}</div>
+        <input class="set-input" type="number" id="curl-w-${i}" value="${w}" min="0" step="5">
+        <input class="set-input" type="number" id="curl-r-${i}" value="" min="0" max="30" placeholder="—">
+        <div class="legs-set-status">
+          <button class="legs-status-btn${status === 'done' ? ' done' : ''}" id="curl-done-${i}" onclick="legs_toggleCurlStatus(${i},'done')">Done</button>
+          <button class="legs-status-btn${status === 'fail' ? ' fail' : ''}" id="curl-fail-${i}" onclick="legs_toggleCurlStatus(${i},'fail')">Fail</button>
+        </div>
+      </div>`;
+  }
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <button class="legs-btn-ghost" onclick="legsActiveWorkout=null;legsSetStatuses={};legs_render()">← Back</button>
+      <span class="legs-badge">Lying Leg Curl</span>
+    </div>
+    <div class="card">
+      <div style="font-size:22px;font-weight:800;color:var(--text)">Lying Leg Curl</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px">Working weight: <strong style="color:var(--accent)">${w} lbs</strong></div>
+      <div class="legs-info-box"><strong>Progression:</strong> Target 8–12 reps per set. Hit 12 on <em>all 3 sets</em> → add weight next session. Any set under 8 → drop weight. Otherwise hold. Full range of motion — stretch at the bottom.</div>
+      <div class="legs-section-label">Sets — 3 × 8–12</div>
+      <div class="legs-sets-header"><div>Set</div><div>Weight</div><div>Reps</div><div>Status</div></div>
+      ${setsHtml}
+      <div id="legs-curl-note" style="margin-top:12px"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="legs_logLegCurl()">Log Workout</button>
+      <button class="btn btn-secondary" onclick="legsActiveWorkout=null;legsSetStatuses={};legs_render()">Cancel</button>
+    </div>`;
+}
+
+function legs_toggleCurlStatus(idx, type) {
+  if (legsSetStatuses[idx] === type) delete legsSetStatuses[idx];
+  else legsSetStatuses[idx] = type;
+  ['done','fail'].forEach(t => {
+    const btn = document.getElementById('curl-' + t + '-' + idx);
+    if (btn) btn.className = 'legs-status-btn' + (legsSetStatuses[idx] === t ? ' ' + t : '');
+  });
+  legs_updateCurlNote();
+}
+
+function legs_updateCurlNote() {
+  const note = document.getElementById('legs-curl-note');
+  if (!note) return;
+  const d   = legs_loadData();
+  const w   = d.legCurl.weight;
+  const inc = d.settings.legCurlIncrement;
+  const reps = [0,1,2].map(i => {
+    const el = document.getElementById('curl-r-'+i);
+    return el ? parseInt(el.value) || 0 : 0;
+  });
+  if (!reps.every(r => r > 0)) { note.innerHTML = ''; return; }
+  const allHitCeiling = reps.every(r => r >= 12);
+  const anyTooLow     = reps.some(r => r < 8);
+  if (allHitCeiling) {
+    note.innerHTML = `<div class="legs-next-box up" style="display:block">↑ All sets hit 12+ — next session: <strong>${w + inc} lbs</strong>. Keep climbing.</div>`;
+  } else if (anyTooLow) {
+    note.innerHTML = `<div class="legs-next-box down" style="display:block">↓ A set fell under 8 — next session: <strong>${Math.max(0, w - inc)} lbs</strong>. Nothing wrong with stepping back.</div>`;
+  } else {
+    note.innerHTML = `<div class="legs-next-box hold" style="display:block">→ Good work — next session: <strong>${w} lbs</strong>. Stay here until you own all 3 sets at 12.</div>`;
+  }
+}
+
+function legs_logLegCurl() {
+  const d = legs_loadData();
+  const w   = d.legCurl.weight;
+  const inc = d.settings.legCurlIncrement;
+  const reps = [0,1,2].map(i => {
+    const el = document.getElementById('curl-r-'+i);
+    return el ? parseInt(el.value) || 0 : 0;
+  });
+  if (reps.every(r => r === 0)) { alert('Enter your reps before logging.'); return; }
+  const sets = [0,1,2].map(i => ({
+    weight: parseFloat(document.getElementById('curl-w-'+i)?.value) || w,
+    reps:   reps[i],
+    status: legsSetStatuses[i] || 'done'
+  }));
+  const allHitCeiling = reps.every(r => r >= 12);
+  const anyTooLow     = reps.some(r => r < 8);
+  let newWeight = w;
+  if (allHitCeiling) newWeight = w + inc;
+  else if (anyTooLow) newWeight = Math.max(0, w - inc);
+
+  d.legCurl.sessions.push({ date: new Date().toISOString(), sets, weightUsed: w });
+  d.legCurl.weight = newWeight;
+  legs_saveData(d);
+  legs_autoSync();
+
+  legsActiveWorkout = null; legsSetStatuses = {};
+  legsSubPage = 'today';
+  legs_render();
+}
+
+// ── History view ─────────────────────────────────────────────
+function legs_buildHistory() {
+  const d = legs_loadData();
+  const all = [
+    ...d.hackSquat.sessions.map(s => ({ ...s, type: 'hackSquat' })),
+    ...d.legCurl.sessions.map(s => ({ ...s, type: 'legCurl' })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (all.length === 0) {
+    return `<div style="text-align:center;padding:50px 20px;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:12px">📋</div>
+      <div style="font-size:15px">No sessions logged yet. Get after it.</div>
+    </div>`;
+  }
+
+  const sqCount   = d.hackSquat.sessions.length;
+  const curlCount = d.legCurl.sessions.length;
+
+  let html = `
+    <div class="legs-week-strip">
+      <div class="legs-stat-box"><div class="legs-stat-val">${d.hackSquat.weight}</div><div class="legs-stat-label">Squat lbs</div></div>
+      <div class="legs-stat-box"><div class="legs-stat-val" style="color:var(--blue-grey)">${d.legCurl.weight}</div><div class="legs-stat-label">Curl lbs</div></div>
+      <div class="legs-stat-box"><div class="legs-stat-val">${sqCount + curlCount}</div><div class="legs-stat-label">Total Sessions</div></div>
+    </div>`;
+
+  all.forEach(s => {
+    const date = new Date(s.date).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const name = s.type === 'hackSquat' ? 'Hack Squat' : 'Lying Leg Curl';
+    let detail = '';
+    if (s.type === 'hackSquat') {
+      const repsStr = s.sets ? s.sets.map(x => x.reps).join('-') : '—';
+      detail = `${s.weightUsed} lbs added · ${repsStr} reps`;
+    } else {
+      const repsStr = s.sets ? s.sets.map(x => x.reps).join(' / ') : '—';
+      detail = `${s.weightUsed} lbs · ${repsStr} reps`;
+    }
+    const rpeTag = s.rpe ? `<span style="display:inline-block;background:var(--cobalt-tint);color:var(--accent);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px">RPE ${s.rpe}</span>` : '';
+    html += `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.8px">${date}</div>
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin:4px 0">${name}${rpeTag}</div>
+        <div style="font-size:13px;color:var(--blue-grey)">${detail}</div>
+      </div>`;
+  });
+  return html;
+}
+
+// ── Equipment settings ───────────────────────────────────────
+function legs_saveEquipmentSettings() {
+  const d = legs_loadData();
+  const plateEl = document.getElementById('legs-set-plate');
+  const curlEl  = document.getElementById('legs-set-curl-inc');
+  if (plateEl) d.settings.smallestPlate    = parseFloat(plateEl.value) || 2.5;
+  if (curlEl)  d.settings.legCurlIncrement = parseFloat(curlEl.value)  || 5;
+  legs_saveData(d);
+  const statusEl = document.getElementById('legs-equip-status');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ Saved.'; setTimeout(() => statusEl.style.display = 'none', 2000); }
+}
+
+// ── GitHub sync (uses main app credentials) ──────────────────
+async function legs_syncToGithub() {
+  const { token, user, repo } = getGithubConfig();
+  if (!token || !user || !repo) return false;
+  try {
+    const data = localStorage.getItem(LEGS_DATA_KEY);
+    if (!data) return false;
+    const bytes   = new TextEncoder().encode(data);
+    const binary  = Array.from(bytes, b => String.fromCharCode(b)).join('');
+    const content = btoa(binary);
+    const filePath = 'legs_data.json';
+    const apiUrl   = 'https://api.github.com/repos/' + user + '/' + repo + '/contents/' + filePath;
+    const headers  = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' };
+    const getRes   = await fetch(apiUrl, { headers });
+    let sha = null;
+    if (getRes.ok) sha = (await getRes.json()).sha;
+    const body = { message: 'legs sync ' + new Date().toISOString().slice(0,16).replace('T',' '), content };
+    if (sha) body.sha = sha;
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return putRes.ok;
+  } catch(e) { return false; }
+}
+
+async function legs_autoSync() {
+  const ok = await legs_syncToGithub();
+  if (ok) showToast('Legs synced ✓');
 }
 
 window.addEventListener('DOMContentLoaded', () => {
