@@ -1,146 +1,125 @@
-# 🏋️ IRON 300 — Bench Press & Hypertrophy Tracker
+# IRON 300
 
-A personal, self-contained workout tracking app built to get you to a **300 lb bench press** while simultaneously building muscle in your back, shoulders, biceps, and triceps.
-
-No account required. No subscription. No internet needed after the first load. Everything runs in your browser and saves locally on your device.
+A single-file PWA for tracking a bench-press-focused strength and hypertrophy program, with an integrated legs tracker. Built around one goal: hitting a 300 lb bench press.
 
 ---
 
-## 🎯 Goals
+## What it is
 
-- Hit a **300 lb bench press 1RM**
-- Build **16 sets/week** of hypertrophy volume across back, shoulders, biceps, and triceps
-- Automate all weight progressions so you never have to think about what to do next
+IRON 300 is a self-contained `index.html` that runs as a progressive web app. No server, no account, no subscription. Data lives in `localStorage` and optionally syncs to a private GitHub repo you own. Install it to your phone's home screen and it behaves like a native app.
 
 ---
 
-## 📋 The Program
+## Program Design
 
-### Bench Press Structure (4-Day Powerbuild)
+The core program is a 4-day upper-body rotation (3-day and 5-day variants also available):
 
-| Day | Focus | What You Do |
-|-----|-------|-------------|
-| **Day 1 — Weekend** | Heavy Bench | Top single @ RPE 7.5–8 + 4×5 back-offs at 83% |
-| **Day 2 — Monday** | OHP | Overhead Press 4×5, progressing to 4×8 before adding weight |
-| **Day 3 — Wednesday** | Volume Bench | 4×6 at ~74% of training max |
-| **Day 4 — Thursday** | Speed Bench | 8×3 at 65%, 60–90s rest — every rep explosive |
+| Day | Focus | Key Work |
+|-----|-------|----------|
+| Day 1 | Heavy Bench | Top single at TM · 4 back-off sets at 85% TM |
+| Day 2 | Volume Bench | 4×6 at ~74% TM |
+| Day 3 | OHP | 4×5 → 4×8 overhead press |
+| Day 4 | Paused Bench | 5×4 at 75% TM, 2-second pause |
 
-The bench single climbs **+2.5 lbs every week**. Every 4th week is an automatic deload at 60–70%.
+**Training Max (TM)** auto-adjusts after every heavy single based on RPE:
 
-### Hypertrophy Accessory Work
+- RPE ≤7 → +5 lbs
+- RPE 8 → +2.5 lbs
+- RPE 8.5–9 → hold
+- RPE 10 → −2.5 lbs
+- Miss the single twice in a row → TM drops 10% and rebuilds
 
-Each training day includes one exercise per muscle group at **4 sets each**, totaling **16 sets/week** per muscle — the scientifically established sweet spot for hypertrophy.
+**Deload** triggers automatically every 5th week (weights drop to 60–70%).
 
-| Day | Back | Shoulders | Biceps | Triceps | Chest |
-|-----|------|-----------|--------|---------|-------|
-| Day 1 | Seated Chest-Supported Row | Rear Delt Fly | EZ Bar Curl | Skull Crusher | Hammer Strength Incline |
-| Day 2 | Lat Pulldown | Lateral Raise | Dumbbell Curl | Tricep Pushdown | — |
-| Day 3 | Seated Cable Row | Face Pull | Hammer Curl | Overhead Tricep Ext | Cable Fly |
-| Day 4 | Dumbbell Row | Lateral Raise | Incline DB Curl | JM Press | — |
+**Assistance** runs on double progression: hit the top of the rep range across all sets → weight goes up next session. Weekly volume targets:
 
----
-
-## 🤖 How Progression Works
-
-### Bench / OHP
-- Training max increases **+2.5 lbs per completed week**
-- OHP progresses from 4×5 → 4×8, then **+5 lbs and reset** to 4×5
-- **Deload automatically** every 4th week (weights drop to 60–70%)
-
-### Assistance Exercises
-Each exercise is classified by type, which determines how it responds to failure and success:
-
-| Type | Examples | On Success | On Failure |
-|------|----------|-----------|------------|
-| **Strength** | Seated Row, JM Press | +5 lbs when top of range hit | Drop 10%, reset reps |
-| **Hypertrophy** | Curls, Skull Crusher, Pulldowns | +weight when top of range hit | Hold weight, drop to bottom of rep range, add 1 rep/week |
-| **Pump** | Laterals, Face Pulls, Flies | +weight when top of range hit | Hold weight, slow the eccentric, focus on form |
-
-> **Important:** Only sets explicitly tagged as **DONE** count toward progression. Sets left as **—** or tagged **SKIP** hold the weight and reps exactly where they are — no penalty, no reward.
+- Back: 16 sets
+- Shoulders: 16 sets
+- Biceps: 16 sets
+- Triceps: 12–16 sets
+- Chest (accessory): Hammer Strength Incline 3×10–12 + Pec Deck 3×12–15
 
 ---
 
-## ⚠️ Failure Protocols
+## Legs Tab
 
-When you mark a set as **FAIL**, the app immediately calculates your next session's targets and shows you a failure guidance card with exact instructions — no guesswork.
+Hack Squat and Lying Leg Curl tracked inside the same app. Weekly volume (sessions, squat sets, curl sets) is visible on the Legs tab so systemic fatigue isn't invisible.
 
-**Bench Press:**
-- Fail the heavy single twice in a row → training max drops 10% and rebuilds
-- Volume and speed days don't affect the failure counter
+- **Hack Squat** — 5×5, RPE-based. ≤8 → add weight, 8.5–9 → hold, 10 → drop.
+- **Lying Leg Curl** — 3×8–12. Hit 12 on all 3 sets → move up. Any set under 8 → drop.
 
-**All other exercises:**
-- Failure guidance is shown automatically after you log the workout
-- Each exercise shows its movement type (strength / hypertrophy / pump) so you know what to expect
+Leg data is stored in a separate `legs_data` localStorage key and syncs to `legs_data.json` in the same GitHub repo using the same credentials as the main app.
 
 ---
 
-## 📱 Running as a Web App (GitHub Pages)
+## Features
 
-This app is a single HTML file and runs entirely in the browser. To host it for free on your phone:
-
-1. Upload `index.html` to a GitHub repository
-2. Enable **GitHub Pages** under Settings → Pages → Deploy from branch (main)
-3. Your app will be live at `https://yourusername.github.io/your-repo-name`
-
-**Add to iPhone home screen:**
-- Open in Safari → Share → Add to Home Screen
-
-**Add to Android home screen:**
-- Open in Chrome → three dots → Add to Home Screen
+- **Today tab** — readiness check (Fresh / Normal / Beat Up), day selector, full workout with warmups, set logging, per-set effort ratings, session notes
+- **Beat Up mode** — drops bench TM, OHP, and all assistance weights 5% for that session only; no deload triggered
+- **300 lb dashboard** — implied 1RM from every heavy single plotted as SVG trendline with projected date to goal; visible in Today, Progress tab, and the app header
+- **Consistency tracking** — current week streak and 12-week attendance card in the Progress tab
+- **Schedule tab** — calendar view of upcoming training days
+- **Program tab** — full program reference with all weights calculated
+- **Graphs tab** — Training Max history chart
+- **History tab** — every logged session with sets, weights, RPE
+- **Plates tab** — plate calculator
+- **Legs tab** — integrated Hack Squat and Leg Curl tracker (see above)
+- **Settings tab** — profile, program variant, assistance weight editor, legs equipment, GitHub sync
 
 ---
 
-## 💾 Data & Storage
+## GitHub Sync
 
-All workout data is stored in your **browser's localStorage** — nothing is sent to any server.
+Data syncs to a private GitHub repo as JSON files:
 
-| What | Details |
+- `iron300_data.json` — all upper-body workout data
+- `legs_data.json` — legs workout data
+
+Setup in Settings → GitHub Sync. You need a GitHub personal access token (classic) with `repo` scope.
+
+---
+
+## Files
+
+| File | Purpose |
 |------|---------|
-| Storage | Browser localStorage (no account, no server) |
-| Persistence | Survives app closes and phone restarts |
-| Risk | Clearing browser data will erase logs |
-| Backup | Use **Export CSV** in the History tab regularly |
-| Sync | Data does not sync between devices |
-
-> **Tip:** Export your CSV every few weeks from the History tab as a backup.
-
----
-
-## ⚙️ Setup
-
-On first launch, go to **Settings** and enter:
-
-- Your current estimated bench 1RM (or use the pre-calculated value from your last known lift)
-- Your goal (default: 300 lbs)
-- OHP starting weight
-- Days per week (3, 4, or 5)
-- Bar weight and smallest plate available
-
-Hit **Save & Generate Program** — your first workout appears immediately.
+| `index.html` | The entire app — styles, HTML, JavaScript in one file |
+| `legs.html` | Legacy standalone legs PWA (superseded by the Legs tab in `index.html`) |
+| `manifest.json` | PWA manifest for `index.html` |
+| `legs-manifest.json` | PWA manifest for `legs.html` |
+| `test.js` | Node.js test suite (run with `node test.js`) |
+| `icon-180.png` / `icon-512.png` | App icons |
 
 ---
 
-## 🗂️ Files
+## Running Tests
 
-```
-index.html    — The entire app (rename from iron300_workout_app.html before uploading)
-README.md     — This file
+```bash
+node test.js
 ```
 
----
+386 tests covering: progression math, deload calculations, RPE → 1RM table, assistance exercise resolution per day and variant, consistency/streak logic, linear regression, implied 1RM history, and goal date projection.
 
-## 📊 Pages
-
-| Page | What It Does |
-|------|-------------|
-| **Today** | Shows your current workout with all target weights, warmups, and set logging |
-| **Program** | Full 4-week block view with all bench weights, plus weekly volume summary per muscle |
-| **Progress** | 1RM history chart, projected timeline to 300, total stats |
-| **History** | Every logged workout with set-by-set detail and CSV export |
-| **Settings** | Configure training max, OHP weight, equipment, and days per week |
+Run this before every commit.
 
 ---
 
-## 🏆 Credits
+## Installing as a PWA
 
-Built for one goal: **300 lbs**. Program methodology based on a 4-day powerbuild approach combining weekly heavy singles (RPE-based), volume work, and speed/dynamic effort — adapted from a proven personal training template.
+On iPhone: open `index.html` in Safari → Share → Add to Home Screen.
+On Android: open in Chrome → three-dot menu → Add to Home Screen.
+
+The app works offline once loaded (no service worker — just bookmark/install from a GitHub Pages or local server URL).
+
+---
+
+## Version History
+
+| Version | What changed |
+|---------|-------------|
+| v3.0 | Legs tab integrated into main app; weekly volume strip; GitHub sync via main app credentials |
+| v2.9 | Pre-session readiness check (Fresh/Normal/Beat Up); Beat Up drops weights 5% session-only |
+| v2.8 | 300 lb progress dashboard — implied 1RM trendline, projected date to goal, header ETA stat |
+| v2.7 | Consistency tracking — week streak + 12-week attendance card in Progress tab |
+| v2.6 | Pec Deck (3×12–15) added to Day 4; Hammer Strength Incline restored to Day 2; test suite (386 tests) |
+| v2.x | Auto-regulation, double progression, deload, fail streak, session notes, GitHub sync, plate calculator |
