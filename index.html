@@ -2425,6 +2425,16 @@ function logWorkout() {
       const rpe = rpeEl ? (parseInt(rpeEl.value) || null) : null;
       return { weight: w, reps: r, done: !!st.done, fail, isSingle: !!s.isSingle, rpe };
     });
+
+    // RPE is required on heavy days — without it the training max cannot advance
+    if (dayDef.benchFocus === 'heavy' && !singleFailed) {
+      const singleSetForRpe = benchSets.find(s => s.isSingle);
+      if (!singleSetForRpe?.rpe) {
+        alert('Select an RPE for your heavy single before logging — the app needs it to know how to adjust your Training Max next week.');
+        return;
+      }
+    }
+
     exercises.push({ name: 'Bench Press', sets: benchSets });
 
     // Update training max from what you ACTUALLY lifted + RPE adjustment
@@ -2592,8 +2602,8 @@ function logWorkout() {
             weight: aw.weight,
             repTarget: aw.repTarget,
           };
-        } else if (aw.repTarget >= exDef.repRange[1]) {
-          // At top of rep range
+        } else if (avgReps >= exDef.repRange[1]) {
+          // At top of rep range — check against reps actually achieved, not the stored target
           const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
           if (effortPattern === 'easy') {
             // All easy — jump weight immediately
