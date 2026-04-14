@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.1
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.2
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -1112,7 +1112,7 @@ const ASSISTANCE_LIBRARY = {
   'Overhead Tricep Ext':        { group: 'triceps',  sets: 4, repRange: [10,15], startWeight: 60,  failProtocol: 'hypertrophy' },
   'JM Press':                   { group: 'triceps',  sets: 4, repRange: [6,10],  startWeight: 95,  failProtocol: 'strength'    },
   // Chest (accessory — bench is primary chest work)
-  'Hammer Strength Incline':    { group: 'chest',    sets: 3, repRange: [10,12], startWeight: 90,  failProtocol: 'hypertrophy' },
+  'Hammer Strength Incline':    { group: 'chest',    sets: 4, repRange: [10,12], startWeight: 90,  failProtocol: 'hypertrophy' },
   'Cable Fly':                  { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 40,  failProtocol: 'pump'        },
   'Pec Deck':                   { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 70,  failProtocol: 'hypertrophy' },
 };
@@ -1483,7 +1483,24 @@ function showPage(name) {
   });
 
   switch(name) {
-    case 'today': pendingSelectedDay = null; pendingReadiness = null; renderToday(); break;
+    case 'today': {
+      // Restore today's workout if already logged, or preserve mid-workout state.
+      // Only reset to day selector if nothing is in progress and nothing logged today.
+      const _navD = loadData();
+      const _today = new Date().toISOString().slice(0, 10);
+      const _loggedToday = _navD.workoutLogs.find(l => l.date === _today);
+      if (_loggedToday) {
+        // Already logged today — restore that day's view
+        pendingSelectedDay = _loggedToday.day;
+        pendingReadiness = _loggedToday.readiness || 'normal';
+      } else if (!pendingSelectedDay) {
+        // No log and no selection — show day selector fresh
+        pendingReadiness = null;
+      }
+      // If pendingSelectedDay is set but nothing logged yet, user is mid-workout — preserve as-is
+      renderToday();
+      break;
+    }
     case 'schedule': renderSchedule(); break;
     case 'program': renderProgram(); break;
     case 'graphs': renderGraphs(); break;
@@ -1842,7 +1859,7 @@ function renderToday() {
         }
         html += `<div class="set-row">
           <div class="set-num" style="font-size:11px; color:var(--muted)">S${i+1}</div>
-          <div><input class="set-input" id="ohp-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} /></div>
+          <div><input class="set-input" id="ohp-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateWeight('ohp-w-',${i})"` : ''} /></div>
           <div><input class="set-input" id="ohp-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
           <button class="set-status-btn ${statusClass}" id="ohp-s-${i}" onclick="toggleSetStatus('ohp',${i})" ${todayLog?'disabled':''}>${statusText}</button>
         </div>
@@ -1950,7 +1967,7 @@ function renderToday() {
 
         html += `<div class="set-row" style="grid-template-columns:${isHeavy ? '120px' : '60px'} 1fr 1fr 90px">
           <div class="set-num" style="${labelStyle}">${s.label || ('S'+(i+1))}</div>
-          <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} ${(s.isSingle && !todayLog) ? 'oninput="updateBackOffsFromSingle(this.value)"' : ''} /></div>
+          <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} ${!todayLog ? (s.isSingle ? 'oninput="updateBackOffsFromSingle(this.value)"' : `oninput="propagateWeight('bench-w-',${i})"`) : ''} /></div>
           <div><input class="set-input" id="bench-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
           <button class="set-status-btn ${statusClass}" id="bench-s-${i}" onclick="toggleSetStatus('bench',${i})" ${todayLog?'disabled':''}>${statusText}</button>
         </div>${rpeSelect}${volumeRpeSelect}`;
@@ -2068,7 +2085,7 @@ function renderToday() {
 
       html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
         <div class="set-num">S${si+1}</div>
-        <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : awDisplayWeight}" ${todayLog?'readonly':''} /></div>
+        <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : awDisplayWeight}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateWeight('ex-${exIdx}-w-',${si})"` : ''} /></div>
         <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : aw.repTarget}" ${todayLog?'readonly':''} /></div>
         <button class="set-status-btn ${statusClass}" id="ex-${exIdx}-s-${si}" onclick="toggleAssistStatus(${exIdx},${si})" ${todayLog?'disabled':''} style="${isSkipped?'opacity:0.4':''}">
           ${statusText}
@@ -2118,6 +2135,18 @@ let pendingSelectedDay = null; // which day the user chose to do today (1-indexe
 let pendingReadiness = null;   // 'fresh'|'normal'|'beatup' — set before each session loads
 
 // When the user edits the single weight, auto-update the 4 back-off inputs to 85% of that
+function propagateWeight(baseId, fromIdx) {
+  const srcEl = document.getElementById(baseId + fromIdx);
+  if (!srcEl) return;
+  const val = srcEl.value;
+  let i = fromIdx + 1;
+  let el;
+  while ((el = document.getElementById(baseId + i)) && !el.readOnly) {
+    el.value = val;
+    i++;
+  }
+}
+
 function updateBackOffsFromSingle(singleW) {
   const w = parseFloat(singleW);
   if (!w || isNaN(w) || w <= 0) return;
