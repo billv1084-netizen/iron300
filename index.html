@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.2
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.3
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -3385,7 +3385,7 @@ function renderSchedule() {
   while (count < maxWorkouts) {
     const dayIdx = simDay - 1;
     const dayDef = structure[dayIdx % structure.length];
-    const isDeload = (simWeek % 4 === 0);
+    const isDeload = (simWeek % 5 === 0);
     const isCurrentDay = (simWeek === d.currentWeek && simDay === d.currentDay);
     const todayLog = d.workoutLogs.find(l => l.week === simWeek && l.day === simDay);
 
@@ -3461,8 +3461,9 @@ function renderSchedule() {
     if (simDay >= structure.length) {
       simDay = 1;
       simWeek++;
-      // Simulate TM progression
-      if (simWeek % 4 !== 1) {
+      // Simulate TM progression — skip bump when entering a deload week,
+      // mirroring advanceDay's `newWeek % 5 !== 0` gate.
+      if (simWeek % 5 !== 0) {
         simTM = roundToPlate(simTM + 2.5, barWeight, smallestPlate);
       }
     } else {
