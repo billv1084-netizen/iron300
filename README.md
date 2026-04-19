@@ -98,7 +98,7 @@ Setup in Settings → GitHub Sync. You need a GitHub personal access token (clas
 node test.js
 ```
 
-386 tests covering: progression math, deload calculations, RPE → 1RM table, assistance exercise resolution per day and variant, consistency/streak logic, linear regression, implied 1RM history, and goal date projection.
+475 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, and source-level drift detection for renderSchedule.
 
 Run this before every commit.
 
@@ -117,6 +117,7 @@ The app works offline once loaded (no service worker — just bookmark/install f
 
 | Version | What changed |
 |---------|-------------|
+| v3.3 | Schedule tab cycle-mismatch fix (renderSchedule now uses 5-week cycle matching the rest of the app); test suite expanded to 475 with cycle-boundary, Beat Up, volume RPE, FAIL_PROTOCOLS, and assistance progression coverage + drift detector |
 | v3.0 | Legs tab integrated into main app; weekly volume strip; GitHub sync via main app credentials |
 | v2.9 | Pre-session readiness check (Fresh/Normal/Beat Up); Beat Up drops weights 5% session-only |
 | v2.8 | 300 lb progress dashboard — implied 1RM trendline, projected date to goal, header ETA stat |
