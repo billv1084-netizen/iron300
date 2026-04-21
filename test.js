@@ -1109,6 +1109,100 @@ const lateralDef = { group: 'shoulders', sets: 4, repRange: [10, 15], startWeigh
 }
 
 // ════════════════════════════════════════════════════════════════
+// 19. Day 1 assistance order — Skull Crusher BEFORE EZ Bar Curl (Inside Grip)
+// ════════════════════════════════════════════════════════════════
+// v3.4: Skull Crusher reordered ahead of EZ Bar Curl (Inside Grip) in all
+// Day 1 assistance arrays. Covers 3-day, 4-day, and 5-day program variants.
+section('Day 1 assistance order (Skull Crusher before EZ Bar Curl)');
+
+[3, 4, 5].forEach(variant => {
+  const struct = getDayStructure(variant);
+  const day1 = struct[0].assistance;
+  const iSC = day1.indexOf('Skull Crusher');
+  const iEZ = day1.indexOf('EZ Bar Curl (Inside Grip)');
+  expect(`${variant}-day Day 1 contains Skull Crusher`,          iSC >= 0, true);
+  expect(`${variant}-day Day 1 contains EZ Bar Curl (Inside)`,   iEZ >= 0, true);
+  expect(`${variant}-day Day 1: Skull Crusher before EZ Bar Curl`, iSC < iEZ, true);
+});
+
+// Source-level drift detector: stale order must not reappear anywhere
+const staleOrder = `'EZ Bar Curl (Inside Grip)','Skull Crusher'`;
+const staleHits  = (sourceText.match(new RegExp(staleOrder.replace(/[()]/g, '\\$&'), 'g')) || []).length;
+expect('No stale Day 1 assistance order in source', staleHits, 0);
+
+// ════════════════════════════════════════════════════════════════
+// 20. renderToday synchronous pendingStatuses restore (tab-switch bug fix)
+// ════════════════════════════════════════════════════════════════
+// v3.4: when showPage('today') re-renders the workout DOM, pendingStatuses
+// must be applied synchronously afterward — otherwise marked sets appear
+// undone and the next click cycles to FAIL instead of DONE.
+// Node can't simulate DOM, so this is a source-level drift detector that
+// catches accidental removal of the sync restore block during future refactors.
+section('renderToday synchronous pendingStatuses restore (Change 3)');
+
+// Isolate the renderToday function body so we only scan inside it.
+const rtStart = sourceText.indexOf('function renderToday()');
+expect('renderToday function present', rtStart >= 0, true);
+
+// Extract from rtStart to the next top-level function declaration.
+// `function propagateWeight(` follows renderToday per current layout.
+const rtEndMarker = sourceText.indexOf('function propagateWeight(', rtStart);
+expect('renderToday boundary (propagateWeight follows)', rtEndMarker > rtStart, true);
+const rtBody = sourceText.slice(rtStart, rtEndMarker);
+
+// 1. The main workout-render path sets el.innerHTML = html;
+const hasInnerHTMLAssign = /el\.innerHTML\s*=\s*html\s*;/.test(rtBody);
+expect('renderToday sets el.innerHTML = html', hasInnerHTMLAssign, true);
+
+// 2. pendingStatuses iteration appears *after* el.innerHTML = html;
+const idxInnerHTML = rtBody.indexOf('el.innerHTML = html');
+const idxRestore   = rtBody.indexOf('Object.entries(pendingStatuses)', idxInnerHTML);
+expect('pendingStatuses applied after innerHTML = html', idxRestore > idxInnerHTML, true);
+
+// 3. Sync restore precedes the trailing updateHeader() call
+const idxUpdateHeader = rtBody.indexOf('updateHeader()', idxInnerHTML);
+expect('sync restore runs before updateHeader()', idxRestore < idxUpdateHeader, true);
+
+// 4. DONE / FAIL / SKIP branches all present in the restore block
+expect('restore block handles DONE state', /className\s*=\s*['"]set-status-btn done['"]/.test(rtBody.slice(idxRestore)), true);
+expect('restore block handles FAIL state', /className\s*=\s*['"]set-status-btn fail['"]/.test(rtBody.slice(idxRestore)), true);
+expect('restore block handles SKIP state', /textContent\s*=\s*['"]SKIP['"]/.test(rtBody.slice(idxRestore)), true);
+
+// ════════════════════════════════════════════════════════════════
+// 21. OHP swap feature fully removed (Change 4)
+// ════════════════════════════════════════════════════════════════
+// v3.4: "Do OHP Today Instead" button and its three helpers deleted.
+// Only the single localStorage.removeItem('iron300_day_swap') cleanup
+// line should remain, to purge stale state on older installs.
+section('OHP swap feature removed from source');
+
+function countMatches(pattern) {
+  const m = sourceText.match(pattern);
+  return m ? m.length : 0;
+}
+
+expect('No function swapOHPDay definition',       countMatches(/function\s+swapOHPDay\b/g),       0);
+expect('No function getSwapOverride definition',  countMatches(/function\s+getSwapOverride\b/g),  0);
+expect('No function clearSwapOverride definition',countMatches(/function\s+clearSwapOverride\b/g),0);
+
+// No call sites
+expect('No swapOHPDay() call sites',       countMatches(/\bswapOHPDay\s*\(/g),       0);
+expect('No getSwapOverride() call sites',  countMatches(/\bgetSwapOverride\s*\(/g),  0);
+expect('No clearSwapOverride() call sites',countMatches(/\bclearSwapOverride\s*\(/g),0);
+
+// iron300_day_swap localStorage key appears exactly once — the cleanup line
+expect('iron300_day_swap appears exactly once (cleanup line only)',
+  countMatches(/iron300_day_swap/g), 1);
+
+// The single occurrence is a localStorage.removeItem call
+expect('Remaining iron300_day_swap is a removeItem cleanup',
+  /localStorage\.removeItem\(['"]iron300_day_swap['"]\)/.test(sourceText), true);
+
+// The "Do OHP Today Instead" UI button label must be gone
+expect('No "Do OHP Today Instead" button in source',
+  countMatches(/Do OHP Today Instead/g), 0);
+
+// ════════════════════════════════════════════════════════════════
 // RESULTS
 // ════════════════════════════════════════════════════════════════
 console.log('\n' + '═'.repeat(60));
