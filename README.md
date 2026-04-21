@@ -98,7 +98,7 @@ Setup in Settings → GitHub Sync. You need a GitHub personal access token (clas
 node test.js
 ```
 
-475 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, and source-level drift detection for renderSchedule.
+502 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, Day 1 assistance ordering, consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, and source-level drift detectors for renderSchedule cycle, renderToday sync restore, and OHP-swap removal.
 
 Run this before every commit.
 
@@ -117,6 +117,7 @@ The app works offline once loaded (no service worker — just bookmark/install f
 
 | Version | What changed |
 |---------|-------------|
+| v3.4 | Tab-switch bug fix — bench/assistance set status no longer wiped when leaving and returning to Today tab; Day 1 assistance reordered (Skull Crusher before EZ Bar Curl); "Do OHP Today Instead" feature removed; bench-system comment block rewritten to disambiguate weekly schedule from in-app rotation order; test suite expanded to 502 with coverage for assistance order, renderToday sync restore, and OHP-swap removal |
 | v3.3 | Schedule tab cycle-mismatch fix (renderSchedule now uses 5-week cycle matching the rest of the app); test suite expanded to 475 with cycle-boundary, Beat Up, volume RPE, FAIL_PROTOCOLS, and assistance progression coverage + drift detector |
 | v3.0 | Legs tab integrated into main app; weekly volume strip; GitHub sync via main app credentials |
 | v2.9 | Pre-session readiness check (Fresh/Normal/Beat Up); Beat Up drops weights 5% session-only |
