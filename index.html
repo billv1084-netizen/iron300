@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.3
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.4
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -1155,7 +1155,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day A — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','Skull Crusher','EZ Bar Curl (Inside Grip)']
       },
       {
         label: 'Day B — OHP + Lats + Bis',
@@ -1173,7 +1173,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','Skull Crusher','EZ Bar Curl (Inside Grip)']
       },
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
@@ -1197,7 +1197,7 @@ function getDayStructure(daysPerWeek) {
       {
         label: 'Day 1 — Heavy Bench + Back + Tris',
         benchFocus: 'heavy',
-        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','EZ Bar Curl (Inside Grip)','Skull Crusher']
+        assistance: ['Seated Chest-Supported Row','Rear Delt Fly','Skull Crusher','EZ Bar Curl (Inside Grip)']
       },
       {
         label: 'Day 2 — Volume Bench + Back + Arms',
@@ -1226,10 +1226,19 @@ function getDayStructure(daysPerWeek) {
 // ─────────────────────────────────────────────────────────
 // POWERBUILD BENCH SYSTEM (from your spreadsheet)
 //
-// Day 1 (Weekend/Heavy): Top Single RPE 7.5–8 + 4×5 back-offs
-// Day 2 (Monday):        Volume Bench 4×6
-// Day 3 (Wednesday):     OHP 4×5 (bench rest — shoulder strength)
-// Day 4 (Thursday):      Paused Bench
+// Weekly training schedule (physical days-of-week):
+//   Monday    — Heavy Bench — Top Single RPE 7.5–8 + 4×5 back-offs
+//   Tuesday   — OHP 4×5 (bench rest — shoulder strength)
+//   Thursday  — Volume Bench 4×6
+//   Saturday  — Paused Bench
+//
+// In-app rotation order (indices used by Today tab's day selector — see
+// getDayStructure above). These are ordered slots, NOT days of the week:
+//   Day 1 = Heavy, Day 2 = Volume, Day 3 = OHP, Day 4 = Paused
+//
+// The two orderings differ intentionally: the rotation is an abstract
+// sequence that works across 3/4/5-day program variants, while the weekly
+// schedule reflects the physical layout of training days.
 //
 // Weekly increment: RPE-driven (see generateBenchSets)
 // Deload every 5th week: drop to 60% for all bench work
@@ -1304,7 +1313,7 @@ function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate, o
     };
   }
 
-  // ── PAUSED BENCH DAY (Thursday) — 5×4 @ 75% TM ──
+  // ── PAUSED BENCH DAY (Saturday) — 5×4 @ 75% TM ──
   if (focus === 'paused') {
     const w = roundToPlate(trainingMax * 0.75, barWeight, smallestPlate);
     return {
@@ -2115,7 +2124,6 @@ function renderToday() {
       <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap">
         <button class="btn btn-primary" onclick="logWorkout()">✓ Log Workout & Progress</button>
         <button class="btn btn-secondary" onclick="skipWorkout()">Skip Today</button>
-        ${dayDef.benchFocus === 'volume' ? '<button class="btn btn-secondary" onclick="swapOHPDay()" style="border-color:var(--accent2); color:var(--accent2)">⇄ Do OHP Today Instead</button>' : ''}
       </div>`;
   } else {
     html += `<div style="margin-top:20px">
@@ -2124,6 +2132,26 @@ function renderToday() {
   }
 
   el.innerHTML = html;
+
+  // Synchronous pendingStatuses restore.
+  // renderToday rebuilds innerHTML on every tab return; without this pass,
+  // buttons look undone while pendingStatuses still says done, so the next
+  // click cycles to FAIL instead of DONE. restorePending() (setTimeout-based)
+  // handles the initial page-load case; this handles re-render-after-tab-switch.
+  Object.entries(pendingStatuses).forEach(([key, s]) => {
+    let btnId;
+    if (key.startsWith('bench-') || key.startsWith('ohp-')) {
+      btnId = key.replace(/^(bench|ohp)-(\d+)$/, '$1-s-$2');
+    } else {
+      btnId = key.replace(/^(ex-\d+)-(\d+)$/, '$1-s-$2');
+    }
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (s.skipped) { btn.textContent = 'SKIP'; btn.style.opacity = '0.4'; }
+    else if (s.done) { btn.className = 'set-status-btn done'; btn.textContent = 'DONE'; }
+    else if (s.fail) { btn.className = 'set-status-btn fail'; btn.textContent = 'FAIL'; }
+  });
+
   updateHeader();
 }
 
@@ -2705,7 +2733,6 @@ function logWorkout() {
   pendingReadiness = null;
   localStorage.removeItem('iron300_pending');
   stopRestTimer();
-  clearSwapOverride(); // clear any OHP swap after logging
   autoSync(); // push to GitHub silently after every logged workout
   renderToday();
 }
@@ -3879,57 +3906,6 @@ function pcCalc() {
 
 
 // ═══════════════════════════════════════════════════════════
-// OHP DAY SWAP
-// ═══════════════════════════════════════════════════════════
-// Swaps Volume Bench and OHP for this week only.
-// Stores a flag in localStorage so after OHP today,
-// the app shows Volume Bench next (before Paused Bench).
-
-function swapOHPDay() {
-  const d = loadData();
-  const structure = getDayStructure(d.settings.daysPerWeek);
-  const currentIdx = d.currentDay - 1;
-  const currentFocus = structure[currentIdx % structure.length].benchFocus;
-
-  if (currentFocus !== 'volume') return; // safety check
-
-  // Find the OHP day index
-  const ohpIdx = structure.findIndex(day => day.benchFocus === 'ohp');
-  if (ohpIdx === -1) return;
-
-  // Store the swap so renderToday knows to show OHP today
-  // and Volume next time around
-  localStorage.setItem('iron300_day_swap', JSON.stringify({
-    week: d.currentWeek,
-    originalDay: d.currentDay,
-    swappedWith: ohpIdx + 1
-  }));
-
-  pendingStatuses = {};
-  pendingNotes = '';
-  renderToday();
-}
-
-function getSwapOverride() {
-  try {
-    const swap = JSON.parse(localStorage.getItem('iron300_day_swap'));
-    if (!swap) return null;
-    const d = loadData();
-    // Only valid for current week and current day
-    if (swap.week === d.currentWeek && swap.originalDay === d.currentDay) {
-      return swap;
-    }
-    // Stale — clear it
-    localStorage.removeItem('iron300_day_swap');
-    return null;
-  } catch(e) { return null; }
-}
-
-function clearSwapOverride() {
-  localStorage.removeItem('iron300_day_swap');
-}
-
-// ═══════════════════════════════════════════════════════════
 // REST TIMER
 // ═══════════════════════════════════════════════════════════
 
@@ -4837,6 +4813,7 @@ async function legs_autoSync() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  localStorage.removeItem('iron300_day_swap');
   updateHeader();
   restorePending();  // must run before renderToday so pendingSelectedDay is set
   renderToday();
