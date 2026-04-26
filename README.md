@@ -17,9 +17,11 @@ The core program is a 4-day upper-body rotation (3-day and 5-day variants also a
 | Day | Focus | Key Work |
 |-----|-------|----------|
 | Day 1 | Heavy Bench | Top single at TM · 4 back-off sets at 85% TM |
-| Day 2 | Volume Bench | 4×6 at ~74% TM |
-| Day 3 | OHP | 4×5 → 4×8 overhead press |
+| Day 2 | OHP | 4×5 → 4×8 overhead press |
+| Day 3 | Volume Bench | 4×6 at ~74% TM |
 | Day 4 | Paused Bench | 5×4 at 75% TM, 2-second pause |
+
+The 4-day rotation maps 1:1 to the physical week: Mon-Heavy, Tue-OHP, Thu-Volume, Sat-Paused.
 
 **Training Max (TM)** auto-adjusts after every heavy single based on RPE:
 
@@ -37,7 +39,7 @@ The core program is a 4-day upper-body rotation (3-day and 5-day variants also a
 - Shoulders: 16 sets
 - Biceps: 16 sets
 - Triceps: 12–16 sets
-- Chest (accessory): Hammer Strength Incline 3×10–12 + Pec Deck 3×12–15
+- Chest (accessory): Hammer Strength Incline 3×10–12 + Pec Deck 4×12–15
 
 ---
 
@@ -98,7 +100,7 @@ Setup in Settings → GitHub Sync. You need a GitHub personal access token (clas
 node test.js
 ```
 
-502 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, Day 1 assistance ordering, consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, and source-level drift detectors for renderSchedule cycle, renderToday sync restore, and OHP-swap removal.
+527 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, Day 1 assistance ordering, Day 4 ordering (Pec Deck before Lateral Raise), consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, propagateReps wiring, and source-level drift detectors for renderSchedule cycle, renderToday sync restore, OHP-swap removal, Day 2/3 reorder, and stale Day 4 ordering.
 
 Run this before every commit.
 
@@ -117,6 +119,7 @@ The app works offline once loaded (no service worker — just bookmark/install f
 
 | Version | What changed |
 |---------|-------------|
+| v3.5 | Day 2/3 reorder — in-app rotation now matches physical week (Day 2 = OHP, Day 3 = Volume) for 4-day and 5-day variants; Pec Deck bumped to 4 sets and moved above Lateral Raise on Day 4; rep input fields gained the same downward propagation as weights (`propagateReps`) so editing one rep target cascades to subsequent sets; test suite expanded to 527 with v3.5 coverage |
 | v3.4 | Tab-switch bug fix — bench/assistance set status no longer wiped when leaving and returning to Today tab; Day 1 assistance reordered (Skull Crusher before EZ Bar Curl); "Do OHP Today Instead" feature removed; bench-system comment block rewritten to disambiguate weekly schedule from in-app rotation order; test suite expanded to 502 with coverage for assistance order, renderToday sync restore, and OHP-swap removal |
 | v3.3 | Schedule tab cycle-mismatch fix (renderSchedule now uses 5-week cycle matching the rest of the app); test suite expanded to 475 with cycle-boundary, Beat Up, volume RPE, FAIL_PROTOCOLS, and assistance progression coverage + drift detector |
 | v3.0 | Legs tab integrated into main app; weekly volume strip; GitHub sync via main app credentials |
