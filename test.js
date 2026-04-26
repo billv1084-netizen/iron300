@@ -433,15 +433,17 @@ expectTrue('4-day Day 1: has Rear Delt Fly',         d1.assistance.includes('Rea
 expectTrue('4-day Day 1: has Skull Crusher',         d1.assistance.includes('Skull Crusher'));
 expectTrue('4-day Day 1: NO Pec Deck (back/tri day)', !d1.assistance.includes('Pec Deck'));
 
-// Day 2: Volume bench — has Hammer Strength Incline
+// Day 2: OHP (v3.5 — was Volume; flipped to match physical week Mon-Heavy / Tue-OHP / Thu-Volume / Sat-Paused)
 const d2 = fourDay[1];
-expectTrue('4-day Day 2: volume bench focus',        d2.benchFocus === 'volume');
-expectTrue('4-day Day 2: has Hammer Strength Incline', d2.assistance.includes('Hammer Strength Incline'));
-expectTrue('4-day Day 2: NO Pec Deck (HS Incline day)', !d2.assistance.includes('Pec Deck'));
+expectTrue('4-day Day 2: OHP focus (v3.5)',          d2.benchFocus === 'ohp');
+expectTrue('4-day Day 2: NO Hammer Strength Incline (moved to Day 3)', !d2.assistance.includes('Hammer Strength Incline'));
+expectTrue('4-day Day 2: NO Pec Deck (Day 4 only)',  !d2.assistance.includes('Pec Deck'));
 
-// Day 3: OHP
+// Day 3: Volume bench — has Hammer Strength Incline (v3.5 — moved here from Day 2)
 const d3 = fourDay[2];
-expectTrue('4-day Day 3: OHP focus',                d3.benchFocus === 'ohp');
+expectTrue('4-day Day 3: Volume focus (v3.5)',       d3.benchFocus === 'volume');
+expectTrue('4-day Day 3: has Hammer Strength Incline', d3.assistance.includes('Hammer Strength Incline'));
+expectTrue('4-day Day 3: NO Pec Deck (Day 4 only)',  !d3.assistance.includes('Pec Deck'));
 
 // Day 4: Paused bench — has Pec Deck (the v2.6 addition)
 const d4 = fourDay[3];
@@ -468,7 +470,10 @@ const fiveDay = getDayStructure(5);
 expect('5-day: 5 days returned',                    fiveDay.length, 5);
 expectTrue('5-day Day 4: paused bench',             fiveDay[3].benchFocus === 'paused');
 expectTrue('5-day Day 4: has Pec Deck',             fiveDay[3].assistance.includes('Pec Deck'));
-expectTrue('5-day Day 2: has Hammer Strength Incline', fiveDay[1].assistance.includes('Hammer Strength Incline'));
+expectTrue('5-day Day 2: OHP focus (v3.5)',         fiveDay[1].benchFocus === 'ohp');
+expectTrue('5-day Day 3: Volume focus (v3.5)',      fiveDay[2].benchFocus === 'volume');
+expectTrue('5-day Day 3: has Hammer Strength Incline (v3.5 — moved from Day 2)', fiveDay[2].assistance.includes('Hammer Strength Incline'));
+expectTrue('5-day Day 5: OHP focus (unchanged)',    fiveDay[4].benchFocus === 'ohp');
 
 // ── All assistance exercises are in ASSISTANCE_LIBRARY ──
 [3, 4, 5].forEach(n => {
@@ -1201,6 +1206,69 @@ expect('Remaining iron300_day_swap is a removeItem cleanup',
 // The "Do OHP Today Instead" UI button label must be gone
 expect('No "Do OHP Today Instead" button in source',
   countMatches(/Do OHP Today Instead/g), 0);
+
+// ════════════════════════════════════════════════════════════════
+// 22. v3.5 — Pec Deck bumped to 4 sets, Pec Deck above Lateral Raise on Day 4
+// ════════════════════════════════════════════════════════════════
+// v3.5 increased Pec Deck from 3×12-15 to 4×12-15 (Bill noticed under-volume
+// chest accessory in his Day 4 sessions) and reordered Day 4 so Pec Deck
+// runs immediately after Dumbbell Row, before Lateral Raise / Incline DB Curl.
+section('v3.5 — Pec Deck volume + Day 4 ordering');
+
+expect('Pec Deck: 4 sets (v3.5, was 3)',  ASSISTANCE_LIBRARY['Pec Deck'].sets, 4);
+expect('Pec Deck: rep range still 12-15', JSON.stringify(ASSISTANCE_LIBRARY['Pec Deck'].repRange), '[12,15]');
+
+[4, 5].forEach(variant => {
+  const day4 = getDayStructure(variant)[3].assistance;
+  const iPD = day4.indexOf('Pec Deck');
+  const iLR = day4.indexOf('Lateral Raise');
+  expect(`${variant}-day Day 4: contains Pec Deck`,    iPD >= 0, true);
+  expect(`${variant}-day Day 4: contains Lateral Raise`, iLR >= 0, true);
+  expect(`${variant}-day Day 4: Pec Deck before Lateral Raise (v3.5)`, iPD < iLR, true);
+});
+
+// Source-level drift detector: stale Day 4 ordering must not reappear
+const staleDay4 = `'Lateral Raise','Incline DB Curl','Pec Deck'`;
+const staleDay4Hits = (sourceText.match(new RegExp(staleDay4.replace(/[()]/g, '\\$&'), 'g')) || []).length;
+expect('No stale Day 4 ordering (Pec Deck last) in source', staleDay4Hits, 0);
+
+// ════════════════════════════════════════════════════════════════
+// 23. v3.5 — Day 2/3 reorder: Day 2 = OHP, Day 3 = Volume (4-day + 5-day)
+// ════════════════════════════════════════════════════════════════
+// v3.5 swapped slot 1 and slot 2 in the 4-day and 5-day variants so the
+// in-app rotation maps 1:1 to Bill's physical week (Mon-Heavy, Tue-OHP,
+// Thu-Volume, Sat-Paused). The 3-day variant (Day A/B/C) is unchanged.
+section('v3.5 — Day 2/3 reorder (4-day + 5-day)');
+
+[4, 5].forEach(variant => {
+  const struct = getDayStructure(variant);
+  expect(`${variant}-day Day 2 label says "OHP"`,    /Day 2 — OHP/.test(struct[1].label), true);
+  expect(`${variant}-day Day 3 label says "Volume"`, /Day 3 — Volume/.test(struct[2].label), true);
+});
+
+// Source-level drift detector: stale label combinations must not reappear
+const staleD2Volume = (sourceText.match(/'Day 2 — Volume Bench/g) || []).length;
+const staleD3OHP    = (sourceText.match(/'Day 3 — OHP/g) || []).length;
+expect('No stale "Day 2 — Volume Bench" label in source', staleD2Volume, 0);
+expect('No stale "Day 3 — OHP" label in source',          staleD3OHP, 0);
+
+// ════════════════════════════════════════════════════════════════
+// 24. v3.5 — propagateReps function exists and is wired on rep inputs
+// ════════════════════════════════════════════════════════════════
+// v3.5 added propagateReps as a mirror of propagateWeight, so editing a
+// rep field copies the value down to subsequent (non-readonly) sets in
+// the same exercise block. Wired on bench (back-offs only — not the
+// heavy single, since reps=1 should not propagate to back-offs at 5),
+// OHP, and assistance rep inputs.
+section('v3.5 — propagateReps wired on rep inputs');
+
+expect('propagateReps function defined',          /function\s+propagateReps\s*\(/.test(sourceText), true);
+expect('propagateReps wired on OHP reps',         /propagateReps\(\s*['"]ohp-r-['"]/.test(sourceText), true);
+expect('propagateReps wired on bench reps',       /propagateReps\(\s*['"]bench-r-['"]/.test(sourceText), true);
+expect('propagateReps wired on assistance reps',  /propagateReps\(\s*[`'"]ex-/.test(sourceText), true);
+// Bench heavy single must NOT propagate reps (single = 1 rep, back-offs = 5)
+expect('bench rep propagation guarded by !s.isSingle',
+  /!s\.isSingle\s*\?\s*`oninput="propagateReps\('bench-r-'/.test(sourceText), true);
 
 // ════════════════════════════════════════════════════════════════
 // RESULTS
