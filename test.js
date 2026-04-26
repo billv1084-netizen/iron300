@@ -1271,6 +1271,89 @@ expect('bench rep propagation guarded by !s.isSingle',
   /!s\.isSingle\s*\?\s*`oninput="propagateReps\('bench-r-'/.test(sourceText), true);
 
 // ════════════════════════════════════════════════════════════════
+// 25. v3.6 — Pinned per-slot notes + bottom session-notes retired
+// ════════════════════════════════════════════════════════════════
+// v3.6 added persistent per-slot reminder notes that survive across
+// sessions. The bottom session-notes textarea was retired in the same
+// release because Bill confirmed he never used it (notes didn't carry
+// forward between workouts). Historical notes still display on the
+// History tab from prior workoutLogs entries — only the input UI is gone.
+section('v3.6 — pinned notes + bottom session notes retirement');
+
+// Helpers exist
+expect('PINNED_NOTES_KEY constant defined',  /const\s+PINNED_NOTES_KEY\s*=\s*['"]iron300_pinned_notes['"]/.test(sourceText), true);
+expect('loadPinnedNotes function defined',   /function\s+loadPinnedNotes\s*\(/.test(sourceText), true);
+expect('savePinnedNote function defined',    /function\s+savePinnedNote\s*\(/.test(sourceText), true);
+expect('pinnedNoteHtml function defined',    /function\s+pinnedNoteHtml\s*\(/.test(sourceText), true);
+
+// All four bench slot keys are wired
+expect('bench-heavy-single slot wired',  /pinnedNoteHtml\(\s*['"]bench-heavy-single['"]/.test(sourceText), true);
+expect('bench-heavy-backoff slot wired', /pinnedNoteHtml\(\s*['"]bench-heavy-backoff['"]/.test(sourceText), true);
+expect('bench-volume slot wired',        /pinnedNoteHtml\(\s*['"]bench-volume['"]/.test(sourceText), true);
+expect('bench-paused slot wired',        /pinnedNoteHtml\(\s*['"]bench-paused['"]/.test(sourceText), true);
+expect('ohp slot wired',                 /pinnedNoteHtml\(\s*['"]ohp['"]/.test(sourceText), true);
+// Assistance: the call uses the exName variable (not a literal)
+expect('assistance slot keyed by exName', /pinnedNoteHtml\(\s*exName\s*,/.test(sourceText), true);
+
+// Bottom session-notes textarea is gone
+expect('No <textarea id="workout-notes"> in source',
+  /<textarea\s+id=["']workout-notes["']/.test(sourceText), false);
+expect('No "Session Notes" card title in source',
+  /Session Notes <span/.test(sourceText), false);
+
+// History tab still references log.notes for historical display
+expect('History tab still reads log.notes for old entries',
+  /if\s*\(\s*log\.notes\s*\)/.test(sourceText), true);
+
+// ════════════════════════════════════════════════════════════════
+// 26. v3.6 — Legs feature parity (rest timer, last-week ref, propagation)
+// ════════════════════════════════════════════════════════════════
+// v3.6 brought four behaviors from the upper-body app to the Legs tab:
+// rest timer fires on done, last-week reference row under each set,
+// weight + rep propagation on input. Pinned notes were intentionally
+// NOT extended to Legs in this release (Bill explicitly scoped the four
+// items above; pinned notes can be added later if needed).
+section('v3.6 — Legs parity (timer / last-week / propagation)');
+
+// Last-week reference helper
+expect('legs_prevRowHtml function defined',
+  /function\s+legs_prevRowHtml\s*\(/.test(sourceText), true);
+expect('legs_prevRowHtml called for hackSquat',
+  /legs_prevRowHtml\(\s*['"]hackSquat['"]/.test(sourceText), true);
+expect('legs_prevRowHtml called for legCurl',
+  /legs_prevRowHtml\(\s*['"]legCurl['"]/.test(sourceText), true);
+
+// Weight + rep propagation wired on Legs inputs
+expect('propagateWeight wired on Hack Squat weight inputs',
+  /oninput="propagateWeight\('sq-w-'/.test(sourceText), true);
+expect('propagateReps wired on Hack Squat rep inputs',
+  /oninput="propagateReps\('sq-r-'/.test(sourceText), true);
+expect('propagateWeight wired on Leg Curl weight inputs',
+  /oninput="propagateWeight\('curl-w-'/.test(sourceText), true);
+expect('propagateReps wired on Leg Curl rep inputs',
+  /oninput="propagateReps\('curl-r-'/.test(sourceText), true);
+
+// Rest timer fires from legs toggle handlers — and is guarded so it doesn't
+// fire on toggle-off or on 'fail'
+function fnBody(name) {
+  const s = sourceText.indexOf('function ' + name + '(');
+  if (s < 0) return '';
+  // Naive but adequate: stop at next top-level "function " declaration
+  const e = sourceText.indexOf('\nfunction ', s + 1);
+  return sourceText.slice(s, e > 0 ? e : sourceText.length);
+}
+const hackBody = fnBody('legs_toggleHackStatus');
+const curlBody = fnBody('legs_toggleCurlStatus');
+expect('legs_toggleHackStatus calls startRestTimer',
+  /startRestTimer\(\)/.test(hackBody), true);
+expect('legs_toggleHackStatus guards on 0→done transition',
+  /!wasDone\s*&&\s*legsSetStatuses\[idx\]\s*===\s*['"]done['"]/.test(hackBody), true);
+expect('legs_toggleCurlStatus calls startRestTimer',
+  /startRestTimer\(\)/.test(curlBody), true);
+expect('legs_toggleCurlStatus guards on 0→done transition',
+  /!wasDone\s*&&\s*legsSetStatuses\[idx\]\s*===\s*['"]done['"]/.test(curlBody), true);
+
+// ════════════════════════════════════════════════════════════════
 // RESULTS
 // ════════════════════════════════════════════════════════════════
 console.log('\n' + '═'.repeat(60));
