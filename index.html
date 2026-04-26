@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.4
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.5
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -1114,7 +1114,7 @@ const ASSISTANCE_LIBRARY = {
   // Chest (accessory — bench is primary chest work)
   'Hammer Strength Incline':    { group: 'chest',    sets: 4, repRange: [10,12], startWeight: 90,  failProtocol: 'hypertrophy' },
   'Cable Fly':                  { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 40,  failProtocol: 'pump'        },
-  'Pec Deck':                   { group: 'chest',    sets: 3, repRange: [12,15], startWeight: 70,  failProtocol: 'hypertrophy' },
+  'Pec Deck':                   { group: 'chest',    sets: 4, repRange: [12,15], startWeight: 70,  failProtocol: 'hypertrophy' },
 };
 
 // ── FAILURE PROTOCOLS ─────────────────────────────────────
@@ -1146,7 +1146,7 @@ const FAIL_PROTOCOLS = {
 };
 
 // ─────────────────────────────────────────────────────────
-// Weekly set totals (4-day): Back 16, Shoulders 16, Biceps 16, Triceps 12, Chest: bench (3 days) + HS Incline 3 sets + Pec Deck 3 sets ✓
+// Weekly set totals (4-day): Back 16, Shoulders 16, Biceps 16, Triceps 12, Chest: bench (3 days) + HS Incline 3 sets + Pec Deck 4 sets ✓
 // ─────────────────────────────────────────────────────────
 
 function getDayStructure(daysPerWeek) {
@@ -1176,22 +1176,22 @@ function getDayStructure(daysPerWeek) {
         assistance: ['Seated Chest-Supported Row','Rear Delt Fly','Skull Crusher','EZ Bar Curl (Inside Grip)']
       },
       {
-        label: 'Day 2 — Volume Bench + Back + Arms',
-        benchFocus: 'volume',
-        assistance: ['Close Grip Pulldown','Hammer Strength Incline','Face Pull','Hammer Curl','Overhead Tricep Ext']
-      },
-      {
-        label: 'Day 3 — OHP + Lats + Bis',
+        label: 'Day 2 — OHP + Lats + Bis',
         benchFocus: 'ohp',
         assistance: ['Lat Pulldown','Machine Lateral Raise','EZ Bar Curl (Outside Grip)','Tricep Pushdown']
       },
       {
+        label: 'Day 3 — Volume Bench + Back + Arms',
+        benchFocus: 'volume',
+        assistance: ['Close Grip Pulldown','Hammer Strength Incline','Face Pull','Hammer Curl','Overhead Tricep Ext']
+      },
+      {
         label: 'Day 4 — Paused Bench + Back + Arms',
         benchFocus: 'paused',
-        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','Pec Deck']
+        assistance: ['Dumbbell Row','Pec Deck','Lateral Raise','Incline DB Curl']
       },
     ];
-    // Back 16, Shoulders 16, Biceps 16, Triceps 12 (intentional: Day 4 is paused bench), Chest: bench work + HS Incline 3 sets (Day 2) + Pec Deck 3 sets (Day 4) ✓
+    // Back 16, Shoulders 16, Biceps 16, Triceps 12 (intentional: Day 4 is paused bench), Chest: bench work + HS Incline 3 sets (Day 3) + Pec Deck 4 sets (Day 4) ✓
   } else {
     return [
       {
@@ -1200,19 +1200,19 @@ function getDayStructure(daysPerWeek) {
         assistance: ['Seated Chest-Supported Row','Rear Delt Fly','Skull Crusher','EZ Bar Curl (Inside Grip)']
       },
       {
-        label: 'Day 2 — Volume Bench + Back + Arms',
-        benchFocus: 'volume',
-        assistance: ['Seated Chest-Supported Row','Hammer Strength Incline','Face Pull','Hammer Curl','Overhead Tricep Ext']
-      },
-      {
-        label: 'Day 3 — OHP + Lats + Bis',
+        label: 'Day 2 — OHP + Lats + Bis',
         benchFocus: 'ohp',
         assistance: ['Lat Pulldown','Lateral Raise','Hammer Curl','Tricep Pushdown']
       },
       {
+        label: 'Day 3 — Volume Bench + Back + Arms',
+        benchFocus: 'volume',
+        assistance: ['Seated Chest-Supported Row','Hammer Strength Incline','Face Pull','Hammer Curl','Overhead Tricep Ext']
+      },
+      {
         label: 'Day 4 — Paused Bench + Back + Arms',
         benchFocus: 'paused',
-        assistance: ['Dumbbell Row','Lateral Raise','Incline DB Curl','Pec Deck']
+        assistance: ['Dumbbell Row','Pec Deck','Lateral Raise','Incline DB Curl']
       },
       {
         label: 'Day 5 — OHP + Full Upper Accessory',
@@ -1233,12 +1233,13 @@ function getDayStructure(daysPerWeek) {
 //   Saturday  — Paused Bench
 //
 // In-app rotation order (indices used by Today tab's day selector — see
-// getDayStructure above). These are ordered slots, NOT days of the week:
-//   Day 1 = Heavy, Day 2 = Volume, Day 3 = OHP, Day 4 = Paused
+// getDayStructure above). These are ordered slots, NOT days of the week,
+// but as of v3.5 the 4-day rotation maps 1:1 to the weekly schedule:
+//   Day 1 = Heavy (Mon), Day 2 = OHP (Tue), Day 3 = Volume (Thu), Day 4 = Paused (Sat)
 //
-// The two orderings differ intentionally: the rotation is an abstract
-// sequence that works across 3/4/5-day program variants, while the weekly
-// schedule reflects the physical layout of training days.
+// The 3-day variant uses Day A/B/C labels and the 5-day variant adds an
+// extra OHP slot at Day 5; only the 4-day variant aligns 1:1 with the
+// physical week.
 //
 // Weekly increment: RPE-driven (see generateBenchSets)
 // Deload every 5th week: drop to 60% for all bench work
@@ -1869,7 +1870,7 @@ function renderToday() {
         html += `<div class="set-row">
           <div class="set-num" style="font-size:11px; color:var(--muted)">S${i+1}</div>
           <div><input class="set-input" id="ohp-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateWeight('ohp-w-',${i})"` : ''} /></div>
-          <div><input class="set-input" id="ohp-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
+          <div><input class="set-input" id="ohp-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateReps('ohp-r-',${i})"` : ''} /></div>
           <button class="set-status-btn ${statusClass}" id="ohp-s-${i}" onclick="toggleSetStatus('ohp',${i})" ${todayLog?'disabled':''}>${statusText}</button>
         </div>
         ${prevRowHtml}`;
@@ -1977,7 +1978,7 @@ function renderToday() {
         html += `<div class="set-row" style="grid-template-columns:${isHeavy ? '120px' : '60px'} 1fr 1fr 90px">
           <div class="set-num" style="${labelStyle}">${s.label || ('S'+(i+1))}</div>
           <div><input class="set-input" id="bench-w-${i}" type="number" value="${loggedSet ? loggedSet.weight : s.targetWeight}" ${todayLog?'readonly':''} ${!todayLog ? (s.isSingle ? 'oninput="updateBackOffsFromSingle(this.value)"' : `oninput="propagateWeight('bench-w-',${i})"`) : ''} /></div>
-          <div><input class="set-input" id="bench-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} /></div>
+          <div><input class="set-input" id="bench-r-${i}" type="number" value="${loggedSet ? loggedSet.reps : s.targetReps}" ${todayLog?'readonly':''} ${!todayLog && !s.isSingle ? `oninput="propagateReps('bench-r-',${i})"` : ''} /></div>
           <button class="set-status-btn ${statusClass}" id="bench-s-${i}" onclick="toggleSetStatus('bench',${i})" ${todayLog?'disabled':''}>${statusText}</button>
         </div>${rpeSelect}${volumeRpeSelect}`;
       });
@@ -2095,7 +2096,7 @@ function renderToday() {
       html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
         <div class="set-num">S${si+1}</div>
         <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : awDisplayWeight}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateWeight('ex-${exIdx}-w-',${si})"` : ''} /></div>
-        <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : aw.repTarget}" ${todayLog?'readonly':''} /></div>
+        <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : aw.repTarget}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateReps('ex-${exIdx}-r-',${si})"` : ''} /></div>
         <button class="set-status-btn ${statusClass}" id="ex-${exIdx}-s-${si}" onclick="toggleAssistStatus(${exIdx},${si})" ${todayLog?'disabled':''} style="${isSkipped?'opacity:0.4':''}">
           ${statusText}
         </button>
@@ -2164,6 +2165,23 @@ let pendingReadiness = null;   // 'fresh'|'normal'|'beatup' — set before each 
 
 // When the user edits the single weight, auto-update the 4 back-off inputs to 85% of that
 function propagateWeight(baseId, fromIdx) {
+  const srcEl = document.getElementById(baseId + fromIdx);
+  if (!srcEl) return;
+  const val = srcEl.value;
+  let i = fromIdx + 1;
+  let el;
+  while ((el = document.getElementById(baseId + i)) && !el.readOnly) {
+    el.value = val;
+    i++;
+  }
+}
+
+// Mirror of propagateWeight for rep targets. Whatever the user types into
+// a rep field is copied down to all subsequent (non-readonly) sets in the
+// same exercise block. v3.5 added because Bill noticed weekly rep targets
+// were drifting below his actual performance, and editing each set's rep
+// field manually was tedious.
+function propagateReps(baseId, fromIdx) {
   const srcEl = document.getElementById(baseId + fromIdx);
   if (!srcEl) return;
   const val = srcEl.value;
