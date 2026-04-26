@@ -56,7 +56,7 @@ Leg data is stored in a separate `legs_data` localStorage key and syncs to `legs
 
 ## Features
 
-- **Today tab** — readiness check (Fresh / Normal / Beat Up), day selector, full workout with warmups, set logging, per-set effort ratings, session notes
+- **Today tab** — readiness check (Fresh / Normal / Beat Up), day selector, full workout with warmups, set logging, per-set effort ratings, **pinned per-slot notes** that persist across sessions
 - **Beat Up mode** — drops bench TM, OHP, and all assistance weights 5% for that session only; no deload triggered
 - **300 lb dashboard** — implied 1RM from every heavy single plotted as SVG trendline with projected date to goal; visible in Today, Progress tab, and the app header
 - **Consistency tracking** — current week streak and 12-week attendance card in the Progress tab
@@ -65,7 +65,7 @@ Leg data is stored in a separate `legs_data` localStorage key and syncs to `legs
 - **Graphs tab** — Training Max history chart
 - **History tab** — every logged session with sets, weights, RPE
 - **Plates tab** — plate calculator
-- **Legs tab** — integrated Hack Squat and Leg Curl tracker (see above)
+- **Legs tab** — integrated Hack Squat and Leg Curl tracker with rest timer, last-session reference rows, and weight/rep propagation matching the upper-body app
 - **Settings tab** — profile, program variant, assistance weight editor, legs equipment, GitHub sync
 
 ---
@@ -100,7 +100,7 @@ Setup in Settings → GitHub Sync. You need a GitHub personal access token (clas
 node test.js
 ```
 
-527 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, Day 1 assistance ordering, Day 4 ordering (Pec Deck before Lateral Raise), consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, propagateReps wiring, and source-level drift detectors for renderSchedule cycle, renderToday sync restore, OHP-swap removal, Day 2/3 reorder, and stale Day 4 ordering.
+551 tests covering: progression math, deload calculations (including cycle-boundary checks), RPE → 1RM table, assistance exercise resolution per day and variant, Day 1 assistance ordering, Day 4 ordering (Pec Deck before Lateral Raise), consistency/streak logic, linear regression, implied 1RM history, goal date projection, Beat Up modifier, volume day RPE adjustment, FAIL_PROTOCOLS behavior, assistance progression decision tree, propagateReps wiring, pinned-notes plumbing, Legs feature parity, and source-level drift detectors for renderSchedule cycle, renderToday sync restore, OHP-swap removal, Day 2/3 reorder, stale Day 4 ordering, and bottom-session-notes retirement.
 
 Run this before every commit.
 
@@ -119,6 +119,7 @@ The app works offline once loaded (no service worker — just bookmark/install f
 
 | Version | What changed |
 |---------|-------------|
+| v3.6 | Pinned per-slot notes — sticky reminder text below each exercise that persists across sessions (4 slots for bench: Heavy single, Back-offs, Volume, Paused; one for OHP; one per assistance exercise). Bottom session-notes textarea retired (Bill never used it — notes didn't carry forward). Legs tab brought to feature parity with the upper-body app: rest timer fires on done, last-session reference row under each set, weight/rep propagation on input. Test suite expanded to 551 |
 | v3.5 | Day 2/3 reorder — in-app rotation now matches physical week (Day 2 = OHP, Day 3 = Volume) for 4-day and 5-day variants; Pec Deck bumped to 4 sets and moved above Lateral Raise on Day 4; rep input fields gained the same downward propagation as weights (`propagateReps`) so editing one rep target cascades to subsequent sets; test suite expanded to 527 with v3.5 coverage |
 | v3.4 | Tab-switch bug fix — bench/assistance set status no longer wiped when leaving and returning to Today tab; Day 1 assistance reordered (Skull Crusher before EZ Bar Curl); "Do OHP Today Instead" feature removed; bench-system comment block rewritten to disambiguate weekly schedule from in-app rotation order; test suite expanded to 502 with coverage for assistance order, renderToday sync restore, and OHP-swap removal |
 | v3.3 | Schedule tab cycle-mismatch fix (renderSchedule now uses 5-week cycle matching the rest of the app); test suite expanded to 475 with cycle-boundary, Beat Up, volume RPE, FAIL_PROTOCOLS, and assistance progression coverage + drift detector |
