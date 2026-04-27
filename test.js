@@ -334,11 +334,34 @@ expectTrue('Deload volume: weight lighter than normal',
 expectTrue('Deload paused: weight lighter than normal',
   deloadPaused.sets[0].targetWeight < normalPaused.sets[0].targetWeight);
 
-// Deload heavy: check sets are at ~50% and ~60% TM (not 100%)
-const deload50 = pct(TM, 50, BAR, PLATE);
+// ── v3.7 deload heavy structure ──
+// Single = 70% TM × 1 rep (RPE 4–5), back-offs = 60% TM × 3 reps × 3 sets.
+// (The previous v3.6 layout was Single = 50% × 3 + 3 back-offs at 60% × 3,
+// which produced a top set LIGHTER than the back-offs and a "single" that
+// wasn't actually a single. Tests below codify the design intent so that
+// regression can't return.)
 const deload60 = pct(TM, 60, BAR, PLATE);
-expect('Deload heavy: first set at 50% TM',  deloadHeavy.sets[0].targetWeight, deload50);
-expect('Deload heavy: back-offs at 60% TM',  deloadHeavy.sets[1].targetWeight, deload60);
+const deload70 = pct(TM, 70, BAR, PLATE);
+expect('Deload heavy: single weight at 70% TM',     deloadHeavy.sets[0].targetWeight, deload70);
+expect('Deload heavy: single is 1 rep',             deloadHeavy.sets[0].targetReps, 1);
+expect('Deload heavy: back-off weight at 60% TM',   deloadHeavy.sets[1].targetWeight, deload60);
+expect('Deload heavy: back-off is 3 reps',          deloadHeavy.sets[1].targetReps, 3);
+expect('Deload heavy: total sets is 4',             deloadHeavy.sets.length, 4);
+
+// ── INVARIANTS (design intent — survive future refactors) ──
+// On any heavy day (deload or not), the top set must be heavier than
+// the back-offs. Catches the v3.6-class inversion bug.
+expectTrue('Heavy day INVARIANT (normal): top set ≥ back-offs',
+  normalHeavy.sets[0].targetWeight >= normalHeavy.sets[1].targetWeight);
+expectTrue('Heavy day INVARIANT (deload): top set ≥ back-offs',
+  deloadHeavy.sets[0].targetWeight >= deloadHeavy.sets[1].targetWeight);
+
+// On any heavy day, the set labeled as the top single must be exactly 1 rep
+// (or the label must change). Catches the "single labeled but 3 reps" bug.
+expectTrue('Heavy day INVARIANT (normal): set labeled "Single" has 1 rep',
+  !/single/i.test(normalHeavy.sets[0].label) || normalHeavy.sets[0].targetReps === 1);
+expectTrue('Heavy day INVARIANT (deload): set labeled "Single" has 1 rep',
+  !/single/i.test(deloadHeavy.sets[0].label) || deloadHeavy.sets[0].targetReps === 1);
 
 // Deload volume: 60% TM
 expect('Deload volume: sets at 60% TM',      deloadVolume.sets[0].targetWeight, deload60);
@@ -346,6 +369,40 @@ expect('Deload volume: sets at 60% TM',      deloadVolume.sets[0].targetWeight, 
 // Deload paused: 55% TM
 const deload55 = pct(TM, 55, BAR, PLATE);
 expect('Deload paused: sets at 55% TM',      deloadPaused.sets[0].targetWeight, deload55);
+
+// ── Deload <= normal weight invariants for every focus ──
+// Catches future regressions where a deload accidentally prescribes a heavier
+// load than the build week. Compares the heaviest set on each day.
+function maxSetWeight(info) { return Math.max(...info.sets.map(s => s.targetWeight)); }
+expectTrue('INVARIANT: deload heavy max ≤ normal heavy max',
+  maxSetWeight(deloadHeavy)  <= maxSetWeight(normalHeavy));
+expectTrue('INVARIANT: deload volume max ≤ normal volume max',
+  maxSetWeight(deloadVolume) <= maxSetWeight(normalVolume));
+expectTrue('INVARIANT: deload paused max ≤ normal paused max',
+  maxSetWeight(deloadPaused) <= maxSetWeight(normalPaused));
+
+// ── Source-level drift detector for assistance deload (v3.7) ──
+// The assistance deload lives in renderToday + logWorkout, both of which
+// are runtime-DOM-coupled and not easily called from this Node harness.
+// Instead, we grep the source for the two checks that MUST exist together,
+// so a future refactor can't silently strip one or both.
+//
+// We require both:
+//   1. Display-side: the assistance render block declares isAssistanceDeload
+//      and uses it to scale awDisplayWeight by 0.65.
+//   2. Progression-side: the logWorkout assistance block declares
+//      isAssistanceDeloadWk and short-circuits with a "Deload — held" note.
+const srcText = fs.readFileSync(__dirname + '/index.html', 'utf8');
+expectTrue('v3.7 — assistance deload display: isAssistanceDeload declared',
+  /const\s+isAssistanceDeload\s*=\s*\(\s*week\s*%\s*5\s*===\s*0\s*\)/.test(srcText));
+expectTrue('v3.7 — assistance deload display: 0.65 weight scale',
+  /isAssistanceDeload[\s\S]{0,300}?aw\.weight\s*\*\s*0\.65/.test(srcText));
+expectTrue('v3.7 — assistance deload display: DELOAD badge rendered',
+  /isAssistanceDeload[\s\S]{0,500}?DELOAD/.test(srcText));
+expectTrue('v3.7 — assistance deload progression: isAssistanceDeloadWk short-circuit',
+  /isAssistanceDeloadWk[\s\S]{0,400}?Deload\s*—\s*held/.test(srcText));
+expectTrue('v3.7 — assistance deload progression: forEach early-return present',
+  /isAssistanceDeloadWk\)\s*\{[\s\S]{0,500}?return;\s*\/\/\s*continue\s*forEach/.test(srcText));
 
 // ════════════════════════════════════════════════════════════════
 // 12. TM progression logic (mirrors advanceDay)
@@ -1308,11 +1365,6 @@ expect('History tab still reads log.notes for old entries',
 // ════════════════════════════════════════════════════════════════
 // 26. v3.6 — Legs feature parity (rest timer, last-week ref, propagation)
 // ════════════════════════════════════════════════════════════════
-// v3.6 brought four behaviors from the upper-body app to the Legs tab:
-// rest timer fires on done, last-week reference row under each set,
-// weight + rep propagation on input. Pinned notes were intentionally
-// NOT extended to Legs in this release (Bill explicitly scoped the four
-// items above; pinned notes can be added later if needed).
 section('v3.6 — Legs parity (timer / last-week / propagation)');
 
 // Last-week reference helper
@@ -1338,7 +1390,6 @@ expect('propagateReps wired on Leg Curl rep inputs',
 function fnBody(name) {
   const s = sourceText.indexOf('function ' + name + '(');
   if (s < 0) return '';
-  // Naive but adequate: stop at next top-level "function " declaration
   const e = sourceText.indexOf('\nfunction ', s + 1);
   return sourceText.slice(s, e > 0 ? e : sourceText.length);
 }
