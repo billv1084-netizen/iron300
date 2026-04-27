@@ -31,7 +31,13 @@ The 4-day rotation maps 1:1 to the physical week: Mon-Heavy, Tue-OHP, Thu-Volume
 - RPE 10 → −2.5 lbs
 - Miss the single twice in a row → TM drops 10% and rebuilds
 
-**Deload** triggers automatically every 5th week (weights drop to 60–70%).
+**Deload** triggers automatically every 5th week. All movements deload, not just bench:
+
+- **Heavy bench:** 70% TM × 1 single (RPE 4–5) + 3 back-offs at 60% × 3
+- **Volume bench:** 4 sets × 4 reps at 60% TM
+- **Paused bench:** 4 sets × 3 reps at 55% TM
+- **OHP:** 3×5 at 70%
+- **Assistance:** 65% of stored weight × bottom of rep range, RPE 5–6. The progression engine is suppressed during deload — weights and rep targets hold for the next session regardless of effort or any failed sets logged that week.
 
 **Assistance** runs on double progression: hit the top of the rep range across all sets → weight goes up next session. Weekly volume targets:
 
@@ -119,6 +125,7 @@ The app works offline once loaded (no service worker — just bookmark/install f
 
 | Version | What changed |
 |---------|-------------|
+| v3.7 | Deload fixes — heavy bench day now produces a real top single (70% TM × 1 RPE 4–5) followed by 3 back-offs at 60% × 3, replacing the previous broken layout where the labeled "Single" was 50% TM × 3 reps and lighter than the back-offs at 60%. Assistance work now actually deloads: target displays at 65% × bottom-of-range with a DELOAD badge during deload weeks, and the progression engine is suppressed for assistance during deload (weights and rep targets are held regardless of done/fail/skipped, no fail-streak counting, no protocol penalties). Deload supersedes Beat Up when both would apply. README's deload section rewritten to actually match the code |
 | v3.6 | Pinned per-slot notes — sticky reminder text below each exercise that persists across sessions (4 slots for bench: Heavy single, Back-offs, Volume, Paused; one for OHP; one per assistance exercise). Bottom session-notes textarea retired (Bill never used it — notes didn't carry forward). Legs tab brought to feature parity with the upper-body app: rest timer fires on done, last-session reference row under each set, weight/rep propagation on input. Test suite expanded to 551 |
 | v3.5 | Day 2/3 reorder — in-app rotation now matches physical week (Day 2 = OHP, Day 3 = Volume) for 4-day and 5-day variants; Pec Deck bumped to 4 sets and moved above Lateral Raise on Day 4; rep input fields gained the same downward propagation as weights (`propagateReps`) so editing one rep target cascades to subsequent sets; test suite expanded to 527 with v3.5 coverage |
 | v3.4 | Tab-switch bug fix — bench/assistance set status no longer wiped when leaving and returning to Today tab; Day 1 assistance reordered (Skull Crusher before EZ Bar Curl); "Do OHP Today Instead" feature removed; bench-system comment block rewritten to disambiguate weekly schedule from in-app rotation order; test suite expanded to 502 with coverage for assistance order, renderToday sync restore, and OHP-swap removal |
