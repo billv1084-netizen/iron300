@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.6
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.7
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -1251,15 +1251,17 @@ function generateBenchSets(focus, week, trainingMax, barWeight, smallestPlate, o
   // ── DELOAD ──
   if (isDeload) {
     if (focus === 'heavy') {
+      const singleW  = pct(trainingMax, 70, barWeight, smallestPlate);
+      const backOffW = pct(trainingMax, 60, barWeight, smallestPlate);
       return {
-        label: 'Deload — Light Singles',
-        note: 'Keep it easy. RPE 5–6 max. This is recovery, not testing.',
-        warmups: buildBenchWarmups(pct(trainingMax, 60, barWeight, smallestPlate), barWeight, smallestPlate, 'heavy'),
+        label: 'Deload — Light Single + Back-offs',
+        note: 'Keep it easy. Single should feel like RPE 4–5 — walk up, press it, done. Back-offs are flush work, no grinding. Recovery, not testing.',
+        warmups: buildBenchWarmups(singleW, barWeight, smallestPlate, 'heavy'),
         sets: [
-          { targetWeight: pct(trainingMax, 50, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Single' },
-          { targetWeight: pct(trainingMax, 60, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Back-off' },
-          { targetWeight: pct(trainingMax, 60, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Back-off' },
-          { targetWeight: pct(trainingMax, 60, barWeight, smallestPlate), targetReps: 3, isAMRAP: false, label: 'Back-off' },
+          { targetWeight: singleW,  targetReps: 1, isAMRAP: false, isSingle: true, label: 'Top Single (RPE 4–5)' },
+          { targetWeight: backOffW, targetReps: 3, isAMRAP: false, label: 'Back-off' },
+          { targetWeight: backOffW, targetReps: 3, isAMRAP: false, label: 'Back-off' },
+          { targetWeight: backOffW, targetReps: 3, isAMRAP: false, label: 'Back-off' },
         ]
       };
     }
@@ -2033,6 +2035,10 @@ function renderToday() {
   // Find most recent prior log for this same day (not strictly week-1, in case week hasn't advanced yet)
   const prevDayLogs = d.workoutLogs.filter(l => l.day === pendingSelectedDay && (l.week < week || (l.week === week && l.date < new Date().toISOString().slice(0,10))));
   const prevWeekLog = prevDayLogs[prevDayLogs.length - 1] || null;
+  // Assistance deload: every 5th week, drop displayed target to ~65% × bottom of rep range.
+  // Deload supersedes beat-up. Display only — stored aw.weight/repTarget are NOT mutated here;
+  // the held progression at logWorkout-time keeps next week's targets intact.
+  const isAssistanceDeload = (week % 5 === 0);
 
   dayDef.assistance.forEach((exName, exIdx) => {
     const exDef = ASSISTANCE_LIBRARY[exName];
@@ -2040,20 +2046,28 @@ function renderToday() {
     const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
     const loggedEx = todayLog?.exercises?.find(e => e.name === exName);
     const prevEx = prevWeekLog?.exercises?.find(e => e.name === exName);
-    // Beat-up: display 5% reduced weight (rounded correctly per group type)
-    const awDisplayWeight = beatUp && !loggedEx
-      ? roundWeight(aw.weight * 0.95, exDef.group, barWeight, smallestPlate)
-      : aw.weight;
+    // Resolve display weight + reps. Deload first (it supersedes beat-up), then beat-up, else stored.
+    let awDisplayWeight, awDisplayReps;
+    if (isAssistanceDeload && !loggedEx) {
+      awDisplayWeight = roundWeight(aw.weight * 0.65, exDef.group, barWeight, smallestPlate);
+      awDisplayReps = exDef.repRange[0];
+    } else if (beatUp && !loggedEx) {
+      awDisplayWeight = roundWeight(aw.weight * 0.95, exDef.group, barWeight, smallestPlate);
+      awDisplayReps = aw.repTarget;
+    } else {
+      awDisplayWeight = aw.weight;
+      awDisplayReps = aw.repTarget;
+    }
 
     html += `<div class="exercise-block">
       <div class="exercise-header">
         <div>
-          <div class="ex-name">${exName}</div>
-          <div class="ex-meta">${exDef.group} · ${exDef.sets} sets · ${exDef.repRange[0]}–${exDef.repRange[1]} reps</div>
+          <div class="ex-name">${exName}${isAssistanceDeload && !loggedEx ? ' <span class="deload-badge" style="font-size:9px; padding:2px 6px; vertical-align:middle">DELOAD</span>' : ''}</div>
+          <div class="ex-meta">${exDef.group} · ${exDef.sets} sets · ${exDef.repRange[0]}–${exDef.repRange[1]} reps${isAssistanceDeload && !loggedEx ? ' · <span style="color:var(--accent2)">RPE 5–6, no grinders</span>' : ''}</div>
         </div>
         <div style="text-align:right">
           <div class="ex-target-label">Target</div>
-          <div class="ex-target" style="${beatUp && !loggedEx ? 'color:var(--red)' : ''}">${awDisplayWeight} lbs × ${aw.repTarget}</div>
+          <div class="ex-target" style="${isAssistanceDeload && !loggedEx ? 'color:var(--accent2)' : (beatUp && !loggedEx ? 'color:var(--red)' : '')}">${awDisplayWeight} lbs × ${awDisplayReps}</div>
           <div style="font-size:9px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:1px">${exDef.failProtocol} mvt</div>
         </div>
       </div>
@@ -2075,8 +2089,8 @@ function renderToday() {
       const statusText = loggedSet ? (isSkipped ? 'SKIP' : loggedSet.fail ? 'FAIL' : 'DONE') : '—';
 
       const prevSet = prevEx?.sets?.[si];
-      const currentReps = loggedSet ? loggedSet.reps : aw.repTarget;
-      const currentWeight = loggedSet ? loggedSet.weight : aw.weight;
+      const currentReps = loggedSet ? loggedSet.reps : awDisplayReps;
+      const currentWeight = loggedSet ? loggedSet.weight : awDisplayWeight;
       let prevRowHtml = '';
       if (prevSet && !prevSet.skipped) {
         const repDiff = currentReps - prevSet.reps;
@@ -2107,7 +2121,7 @@ function renderToday() {
       html += `<div class="set-row" id="ex-row-${exIdx}-${si}">
         <div class="set-num">S${si+1}</div>
         <div><input class="set-input" id="ex-${exIdx}-w-${si}" type="number" value="${loggedSet ? loggedSet.weight : awDisplayWeight}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateWeight('ex-${exIdx}-w-',${si})"` : ''} /></div>
-        <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : aw.repTarget}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateReps('ex-${exIdx}-r-',${si})"` : ''} /></div>
+        <div><input class="set-input" id="ex-${exIdx}-r-${si}" type="number" value="${loggedSet ? loggedSet.reps : awDisplayReps}" ${todayLog?'readonly':''} ${!todayLog ? `oninput="propagateReps('ex-${exIdx}-r-',${si})"` : ''} /></div>
         <button class="set-status-btn ${statusClass}" id="ex-${exIdx}-s-${si}" onclick="toggleAssistStatus(${exIdx},${si})" ${todayLog?'disabled':''} style="${isSkipped?'opacity:0.4':''}">
           ${statusText}
         </button>
@@ -2640,6 +2654,12 @@ function logWorkout() {
   }
 
   // ── ASSISTANCE ──
+  // Deload week: progression engine is suppressed for assistance work.
+  // We still log the sets (for history) but hold weight + repTarget unchanged
+  // and don't touch fail-streak counters. Otherwise easy deload sets would
+  // either trigger phantom progression (anyDone + topOfRange logic) or
+  // phantom fail-protocol penalties.
+  const isAssistanceDeloadWk = (week % 5 === 0);
 
   dayDef.assistance.forEach((exName, exIdx) => {
     const exDef = ASSISTANCE_LIBRARY[exName];
@@ -2673,6 +2693,16 @@ function logWorkout() {
       sets.push({ weight: w, reps: r, done, fail, skipped, effort, progressionNote });
     }
     exercises.push({ name: exName, sets });
+
+    // ── Deload short-circuit ──
+    // Hold weight + repTarget exactly as they were going in, don't touch failStreak,
+    // and stamp every set with a "Deload — held" note. Skip all progression logic.
+    if (isAssistanceDeloadWk) {
+      progressionNote = 'Deload — held, no progression';
+      d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
+      exercises[exercises.length - 1].sets.forEach(s => s.progressionNote = progressionNote);
+      return; // continue forEach
+    }
 
     // ── Progression decision ──
     if (anySkipped && !anyDone && !anyFail) {
