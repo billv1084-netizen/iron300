@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.9
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.10
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -832,6 +832,7 @@
     <div class="form-group">
       <label class="form-label">Current Bench Estimated 1RM (lbs)</label>
       <input class="form-input" type="number" id="set-1rm" placeholder="e.g. 265" />
+      <div style="font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4">Live estimate from your training max — same number as the header. Edit and save to recalibrate (this resets training max to your new value × 0.935).</div>
     </div>
     <div class="form-group">
       <label class="form-label">Goal: Bench Press 1RM (lbs)</label>
@@ -4447,7 +4448,13 @@ function renderSettings() {
   const ohpEl  = document.getElementById('set-ohp');
   const barEl  = document.getElementById('set-bar');
   const platEl = document.getElementById('set-plate');
-  if (d.estimated1RM && rmEl)   rmEl.value   = d.estimated1RM;
+  // v3.10: show the live trainingMax-derived 1RM (matches header / Program tab),
+  // not the frozen d.estimated1RM high-water mark. The high-water mark only ever
+  // moves up (line "if (est > d.estimated1RM)") so it could lag well above your
+  // current capability. Editing this field triggers a manual recalibration via
+  // saveSettings, which recomputes trainingMax from the new value.
+  const live1RM = d.trainingMax ? Math.round(d.trainingMax / 0.935 / 5) * 5 : d.estimated1RM;
+  if (live1RM && rmEl) rmEl.value = live1RM;
   if (d.settings.goal && goalEl) goalEl.value = d.settings.goal;
   if (eqEl)   eqEl.value   = d.settings.equipment   || 'barbell';
   if (daysEl) daysEl.value = d.settings.daysPerWeek || 4;
