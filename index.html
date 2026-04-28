@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.8
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.9
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -977,7 +977,8 @@ function defaultData() {
     dayQueue: [], // ordered array of upcoming day indices for this cycle
     program: null, // generated program
     workoutLogs: [], // [{week, day, date, exercises:[{name, sets:[{weight,reps,done,fail}]}]}]
-    failStreak: {}, // {exerciseName: count}
+    failStreak: {}, // {exerciseName: count} — consecutive real-fail sessions; 2 in a row triggers fail-protocol penalty
+    nearMissStreak: {}, // v3.9: {exerciseName: count} — consecutive near-miss sessions; 3 in a row triggers progressive wave
     assistanceWeights: {}, // {exerciseName: {weight, reps}}
     ohpRepsPerSet: 5  // tracks OHP rep target (4×5 → 4×8 before adding weight)
   };
@@ -1480,6 +1481,7 @@ function saveSettings() {
     d.currentWeek = 1;
     d.currentDay = 1;
     d.failStreak = {};
+    d.nearMissStreak = {}; // v3.9
     d.ohpRepsPerSet = 5; // tracks OHP reps toward 4×8 threshold
     d.assistanceWeights = {};
     Object.entries(ASSISTANCE_LIBRARY).forEach(([name, info]) => {
@@ -1506,6 +1508,7 @@ function restartProgram() {
   d.currentWeek = 1;
   d.currentDay = 1;
   d.failStreak = {};
+  d.nearMissStreak = {}; // v3.9
   d.ohpRepsPerSet = 5;
   d.assistanceWeights = {};
   Object.entries(ASSISTANCE_LIBRARY).forEach(([name, info]) => {
@@ -2706,18 +2709,30 @@ function logWorkout() {
   // phantom fail-protocol penalties.
   const isAssistanceDeloadWk = (week % 5 === 0);
 
+  // v3.9: ensure both streak counters exist (older user data may predate nearMissStreak).
+  if (!d.failStreak)     d.failStreak = {};
+  if (!d.nearMissStreak) d.nearMissStreak = {};
+
   dayDef.assistance.forEach((exName, exIdx) => {
     const exDef = ASSISTANCE_LIBRARY[exName];
     if (!exDef) return;
     const aw = d.assistanceWeights[exName] || { weight: exDef.startWeight, repTarget: exDef.repRange[0] };
     const protocol = FAIL_PROTOCOLS[exDef.failProtocol] || FAIL_PROTOCOLS.hypertrophy;
+    // v3.9: pump-protocol exercises (rear delt fly, lateral raise) always get the small bump,
+    // regardless of group. Pump work needs gentler progressive overload than strength work.
+    const groupInc = exDef.failProtocol === 'pump'
+      ? 2.5
+      : ((exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5);
 
     let anyFail = false;
     let anyDone = false;
     let anySkipped = false;
     let allDone = true;
     let totalReps = 0;
-    let actualWeights = [];
+    let actualWeights = [];   // weights from Done sets
+    let failedWeights = [];   // weights from Failed sets — still count toward actualMax (the load was handled until rep failure)
+    let failedSetIndices = [];
+    let failedRepDeficits = [];
 
     const sets = [];
     let progressionNote = 'Skipped — no change';
@@ -2725,23 +2740,29 @@ function logWorkout() {
       const w = parseFloat(document.getElementById(`ex-${exIdx}-w-${si}`)?.value) || aw.weight;
       const r = parseInt(document.getElementById(`ex-${exIdx}-r-${si}`)?.value) || aw.repTarget;
       const st = pendingStatuses[`ex-${exIdx}-${si}`] || {};
-      const effort = pendingEfforts[exIdx + '-' + si] || 'ok';  // Default to 'ok' if not set
+      const effort = pendingEfforts[exIdx + '-' + si] || 'ok';
 
       const skipped = st.skipped || (!st.done && !st.fail);
       const fail = st.fail || false;
       const done = st.done || false;
 
       if (skipped) { anySkipped = true; allDone = false; }
-      if (fail)    { anyFail = true;    allDone = false; }
-      if (done)    { anyDone = true; totalReps += r; actualWeights.push(w); }
+      if (fail) {
+        anyFail = true;
+        allDone = false;
+        failedWeights.push(w);
+        failedSetIndices.push(si);
+        failedRepDeficits.push(Math.max(0, aw.repTarget - r));
+      }
+      if (done) { anyDone = true; totalReps += r; actualWeights.push(w); }
 
       sets.push({ weight: w, reps: r, done, fail, skipped, effort, progressionNote });
     }
     exercises.push({ name: exName, sets });
 
     // ── Deload short-circuit ──
-    // Hold weight + repTarget exactly as they were going in, don't touch failStreak,
-    // and stamp every set with a "Deload — held" note. Skip all progression logic.
+    // Hold weight + repTarget exactly as they were going in. Don't touch failStreak
+    // OR nearMissStreak — deload sets shouldn't affect either counter.
     if (isAssistanceDeloadWk) {
       progressionNote = 'Deload — held, no progression';
       d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
@@ -2749,115 +2770,139 @@ function logWorkout() {
       return; // continue forEach
     }
 
+    // ── Auto-anchor up (v3.9 broadened) ──
+    // If the user lifted heavier than the prescribed weight on ANY logged set
+    // (Done or Failed — a failed set still proves the load was handled until
+    // rep failure), anchor stored weight to that and reset reps to bottom.
+    // Resets both streaks: leveling up the weight invalidates "stuck" patterns.
+    const allLoggedWeights = actualWeights.concat(failedWeights);
+    const actualMax = allLoggedWeights.length ? Math.max.apply(null, allLoggedWeights) : 0;
+    if (actualMax > aw.weight && (anyDone || anyFail)) {
+      progressionNote = 'Advanced — lifted heavier than prescribed';
+      d.assistanceWeights[exName] = {
+        weight: roundWeight(actualMax, exDef.group, barWeight, smallestPlate),
+        repTarget: exDef.repRange[0],
+      };
+      d.failStreak[exName] = 0;
+      d.nearMissStreak[exName] = 0;
+      exercises[exercises.length - 1].sets.forEach(s => s.progressionNote = progressionNote);
+      return;
+    }
+
     // ── Progression decision ──
     if (anySkipped && !anyDone && !anyFail) {
-      // Entire exercise skipped — hold, no change
+      // Entire exercise skipped — hold, no change. Don't touch streaks (no signal).
       progressionNote = 'Skipped — no change';
       d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
 
     } else if (anyFail) {
-      // Track consecutive fail sessions
-      if (!d.failStreak[exName]) d.failStreak[exName] = 0;
-      d.failStreak[exName]++;
+      // v3.9: distinguish near-miss (fatigue at the edge) from real-fail (weight too heavy).
+      // Near-miss criteria — ALL must hold:
+      //   - Failed sets only in late positions (no fail at set 1 or 2). Early-set
+      //     failure means the bar is winning from the start.
+      //   - Total rep deficit across the session ≤ 2.
+      //   - No single failed set missed by more than 2 reps.
+      const earlySetFailed = failedSetIndices.some(i => i < 2);
+      const totalDeficit = failedRepDeficits.reduce((a, b) => a + b, 0);
+      const maxDeficit   = failedRepDeficits.length ? Math.max.apply(null, failedRepDeficits) : 0;
+      const isNearMiss   = !earlySetFailed && totalDeficit <= 2 && maxDeficit <= 2;
 
-      if (d.failStreak[exName] >= 2) {
-        // Two sessions in a row — apply the protocol penalty
-        const newW = protocol.newWeight(aw.weight);
-        const newR = protocol.newReps(aw.repTarget, exDef.repRange);
-        d.assistanceWeights[exName] = { weight: newW, repTarget: newR };
+      if (isNearMiss) {
+        // Near-miss: don't penalize. Increment near-miss streak; reset fail-streak.
         d.failStreak[exName] = 0;
-        progressionNote = 'Held — consecutive failures, protocol applied';
-        failGuidance.push({
-          name: exName,
-          group: exDef.group,
-          protocol: exDef.failProtocol,
-          instruction: protocol.getInstruction(aw.weight, exDef.repRange),
-          newWeight: newW,
-          newReps: newR,
-        });
+        d.nearMissStreak[exName] = (d.nearMissStreak[exName] || 0) + 1;
+
+        if (d.nearMissStreak[exName] >= 3) {
+          // ── WAVE ── 3 consecutive near-miss sessions = stuck-at-edge.
+          // Bump the weight by group increment (or +2.5 for pump), reset reps to
+          // bottom of range. This is a stimulus change, not a regression.
+          const newW = roundWeight(aw.weight + groupInc, exDef.group, barWeight, smallestPlate);
+          d.assistanceWeights[exName] = { weight: newW, repTarget: exDef.repRange[0] };
+          d.nearMissStreak[exName] = 0;
+          progressionNote = `Wave — held 3 sessions at this weight, bumping to ${newW} × ${exDef.repRange[0]}. Build back up the rep range.`;
+        } else {
+          // Hold; tell the user where they are in the streak.
+          d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
+          const left = 3 - d.nearMissStreak[exName];
+          progressionNote = left === 1
+            ? 'Held — near target. One more near-miss session and the engine bumps you up.'
+            : 'Held — near target. Try for the clean sweep next session.';
+        }
+
       } else {
-        // First fail — hold weight and reps, try again next session
-        progressionNote = 'Held — missed reps on set ' + sets.findIndex(s => s.fail);
-        d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
-        failGuidance.push({
-          name: exName,
-          group: exDef.group,
-          protocol: exDef.failProtocol,
-          instruction: `Hold at <strong>${aw.weight} lbs × ${aw.repTarget} reps</strong> — one missed set isn't a setback. Come back next session and attack it fresh.`,
-          newWeight: aw.weight,
-          newReps: aw.repTarget,
-        });
+        // Real-fail: weight was too heavy or work fell apart. Existing path.
+        // Reset near-miss streak (this isn't a near-miss session).
+        d.nearMissStreak[exName] = 0;
+        d.failStreak[exName] = (d.failStreak[exName] || 0) + 1;
+
+        if (d.failStreak[exName] >= 2) {
+          const newW = protocol.newWeight(aw.weight);
+          const newR = protocol.newReps(aw.repTarget, exDef.repRange);
+          d.assistanceWeights[exName] = { weight: newW, repTarget: newR };
+          d.failStreak[exName] = 0;
+          progressionNote = 'Held — consecutive failures, protocol applied';
+          failGuidance.push({
+            name: exName,
+            group: exDef.group,
+            protocol: exDef.failProtocol,
+            instruction: protocol.getInstruction(aw.weight, exDef.repRange),
+            newWeight: newW,
+            newReps: newR,
+          });
+        } else {
+          progressionNote = 'Held — missed reps on set ' + (failedSetIndices[0] + 1);
+          d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
+          failGuidance.push({
+            name: exName,
+            group: exDef.group,
+            protocol: exDef.failProtocol,
+            instruction: `Hold at <strong>${aw.weight} lbs × ${aw.repTarget} reps</strong> — one missed set isn't a setback. Come back next session and attack it fresh.`,
+            newWeight: aw.weight,
+            newReps: aw.repTarget,
+          });
+        }
       }
 
     } else if (allDone && actualWeights.length > 0) {
-      d.failStreak[exName] = 0; // clear streak on clean session
-      const actualMax = Math.max(...actualWeights);
+      // Clean session — reset BOTH streaks, run normal rep-ladder progression.
+      d.failStreak[exName] = 0;
+      d.nearMissStreak[exName] = 0;
       const avgReps = totalReps / exDef.sets;
       const effortPattern = analyzeEffort(sets);
 
-      if (actualMax > aw.weight) {
-        // You lifted heavier than suggested — anchor to actual weight
-        progressionNote = 'Advanced — lifted heavier than prescribed';
-        d.assistanceWeights[exName] = {
-          weight: roundWeight(actualMax, exDef.group, barWeight, smallestPlate),
-          repTarget: exDef.repRange[0],
-        };
-      } else if (avgReps >= aw.repTarget) {
-        // Hit or exceeded the current rep target on all sets
+      if (avgReps >= aw.repTarget) {
         if (effortPattern === 'hard') {
-          // Hard session — hold weight and reps
           progressionNote = 'Held — hard sets detected';
-          d.assistanceWeights[exName] = {
-            weight: aw.weight,
-            repTarget: aw.repTarget,
-          };
+          d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
         } else if (avgReps >= exDef.repRange[1]) {
-          // At top of rep range — check against reps actually achieved, not the stored target
-          const increment = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
           if (effortPattern === 'easy') {
-            // All easy — jump weight immediately
             progressionNote = 'Advanced — all sets felt easy, jumped weight';
-            d.assistanceWeights[exName] = {
-              weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
-              repTarget: exDef.repRange[0],
-            };
           } else {
-            // ok or mostly-easy at ceiling — normal progression
             progressionNote = 'Advanced — hit rep ceiling, weight increased';
-            d.assistanceWeights[exName] = {
-              weight: roundWeight(aw.weight + increment, exDef.group, barWeight, smallestPlate),
-              repTarget: exDef.repRange[0],
-            };
           }
+          d.assistanceWeights[exName] = {
+            weight: roundWeight(aw.weight + groupInc, exDef.group, barWeight, smallestPlate),
+            repTarget: exDef.repRange[0],
+          };
         } else {
-          // Below top of range
           if (effortPattern === 'easy') {
-            // All easy — add 2 reps instead of 1
             progressionNote = 'Advanced — easy session, added 2 reps';
             d.assistanceWeights[exName] = {
               weight: aw.weight,
               repTarget: Math.min(exDef.repRange[1], aw.repTarget + 2),
             };
           } else {
-            // Normal progression — add 1 rep
             progressionNote = 'Advanced — added 1 rep';
-            d.assistanceWeights[exName] = {
-              weight: aw.weight,
-              repTarget: aw.repTarget + 1,
-            };
+            d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget + 1 };
           }
         }
       } else {
-        // Didn't hit rep target — hold weight and reps
         progressionNote = 'Held — below rep target';
-        d.assistanceWeights[exName] = {
-          weight: aw.weight,
-          repTarget: aw.repTarget,
-        };
+        d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
       }
 
     } else {
-      // Partial session (some done, some skipped, no fails) — hold, no change
+      // Partial session (some done, some skipped, no fails) — hold, no streak change.
       progressionNote = 'Held — incomplete session';
       d.assistanceWeights[exName] = { weight: aw.weight, repTarget: aw.repTarget };
     }
