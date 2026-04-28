@@ -488,6 +488,44 @@ expectTrue('v3.8 — Settings page: "Restart Program" button wired to restartPro
 expectTrue('v3.8 — Settings page: no live button uses old "Save & Generate" label',
   !/onclick="[^"]*"[^>]*>\s*Save\s*&(?:amp;)?\s*Generate\s*Program\s*</.test(srcText));
 
+// ── Source-level drift detectors for v3.10 — Settings 1RM is live ──
+// v3.10 fixed the misleading Settings field that showed `d.estimated1RM`
+// (a high-water mark that only moves up — could be 30+ lbs above current
+// capability). The field now defaults to the live trainingMax-derived 1RM,
+// matching the header and Program tab. Editing the field still triggers a
+// manual recalibration via saveSettings.
+section('v3.10 — Settings 1RM field shows live estimate');
+
+// 1. renderSettings derives the field from trainingMax, not from estimated1RM
+//    directly. Match the same formula the header uses: round(TM/0.935/5)*5.
+const rsStart = srcText.indexOf('function renderSettings()');
+expectTrue('renderSettings function present', rsStart >= 0);
+const rsEnd = srcText.indexOf('\nfunction ', rsStart + 1);
+const rsBody = srcText.slice(rsStart, rsEnd > rsStart ? rsEnd : rsStart + 5000);
+
+expectTrue('v3.10 — renderSettings derives 1RM from trainingMax',
+  /d\.trainingMax\s*\?\s*Math\.round\(\s*d\.trainingMax\s*\/\s*0\.935\s*\/\s*5\s*\)\s*\*\s*5/.test(rsBody));
+expectTrue('v3.10 — renderSettings falls back to estimated1RM if no TM',
+  /d\.trainingMax\s*\?[\s\S]{0,200}?:\s*d\.estimated1RM/.test(rsBody));
+expectTrue('v3.10 — renderSettings sets rmEl.value from the live derivation',
+  /rmEl\.value\s*=\s*live1RM/.test(rsBody));
+// Anti-regression: the OLD assignment must be gone
+expectTrue('v3.10 — old direct estimated1RM assignment removed',
+  !/if\s*\(d\.estimated1RM\s*&&\s*rmEl\)\s*rmEl\.value\s*=\s*d\.estimated1RM\s*;/.test(rsBody));
+
+// 2. The Settings page caption explaining the field is in the source
+expectTrue('v3.10 — Settings caption explains live estimate + recalibrate behavior',
+  /Live estimate from your training max[\s\S]{0,200}?Edit and save to recalibrate/.test(srcText));
+
+// 3. saveSettings still recomputes trainingMax from the entered value
+//    (the recalibration mechanism). Already covered by v3.8 detectors but
+//    worth re-asserting since v3.10's UX leans on this contract.
+const ssStartV10 = srcText.indexOf('function saveSettings()');
+const ssEndV10   = srcText.indexOf('function restartProgram(', ssStartV10);
+const ssBodyV10  = srcText.slice(ssStartV10, ssEndV10);
+expectTrue('v3.10 — saveSettings still computes trainingMax = round(rm * 0.935)',
+  /d\.trainingMax\s*=\s*Math\.round\(\s*rm\s*\*\s*0\.935\s*\)/.test(ssBodyV10));
+
 // ── Source-level drift detectors for v3.9 progression logic ──
 // v3.9 added: near-miss bucket, near-miss streak counter, wave trigger at 3,
 // pump-protocol always +2.5, broadened auto-anchor (counts failed-set weight).
