@@ -404,6 +404,90 @@ expectTrue('v3.7 — assistance deload progression: isAssistanceDeloadWk short-c
 expectTrue('v3.7 — assistance deload progression: forEach early-return present',
   /isAssistanceDeloadWk\)\s*\{[\s\S]{0,500}?return;\s*\/\/\s*continue\s*forEach/.test(srcText));
 
+// ── Source-level drift detector for v3.8 saveSettings safety ──
+// v3.8 fixed the silent progression-wipe bug: pressing "Save & Generate
+// Program" used to reset d.assistanceWeights to library defaults on every
+// save, nuking weeks of progression any time you edited your goal or 1RM.
+// The destructive code now lives in restartProgram(), behind a confirm()
+// dialog. saveSettings() must be a no-op for assistanceWeights on existing
+// data (i.e. when assistanceWeights is already populated).
+//
+// We can't easily call saveSettings() from this Node harness (it depends on
+// document.getElementById for the form fields and showPage/showToast for
+// side effects). Instead, we scan the source to lock in the structural
+// invariants that prevent regression.
+section('v3.8 — saveSettings safety (no silent assistance wipe)');
+
+// Isolate the saveSettings function body for scoped checks.
+const ssStart = srcText.indexOf('function saveSettings()');
+expectTrue('saveSettings function present', ssStart >= 0);
+const ssEnd = srcText.indexOf('function restartProgram(', ssStart);
+expectTrue('saveSettings boundary (restartProgram follows)', ssEnd > ssStart);
+const ssBody = srcText.slice(ssStart, ssEnd);
+
+// 1. saveSettings must NOT contain an unconditional assistanceWeights = {} wipe.
+//    Any occurrence of the wipe inside saveSettings must sit behind an
+//    isFirstRun guard. We assert by structure: the wipe line must be
+//    preceded (in the body) by an isFirstRun check.
+const wipeIdx = ssBody.indexOf('d.assistanceWeights = {}');
+if (wipeIdx >= 0) {
+  const firstRunIdx = ssBody.indexOf('isFirstRun');
+  expectTrue('v3.8 — saveSettings: wipe line is gated by isFirstRun',
+    firstRunIdx >= 0 && firstRunIdx < wipeIdx);
+} else {
+  expectTrue('v3.8 — saveSettings: no wipe line at all (acceptable)', true);
+}
+
+// 2. saveSettings must declare an isFirstRun signal derived from the
+//    presence of existing assistance weights — the only reliable way to
+//    distinguish onboarding from a settings tweak.
+expectTrue('v3.8 — saveSettings: isFirstRun derived from assistanceWeights state',
+  /isFirstRun\s*=[\s\S]{0,200}?Object\.keys\(d\.assistanceWeights\)\.length/.test(ssBody));
+
+// 3. saveSettings must NOT contain unconditional currentWeek/currentDay/
+//    failStreak/ohpRepsPerSet resets — those are progression state, not
+//    config, and must only fire on first-run.
+//    Strategy: every assignment to those fields inside saveSettings must
+//    occur after the isFirstRun gate (i.e. at a body offset > the gate's
+//    `if (isFirstRun)` index).
+const gateIdx = ssBody.indexOf('if (isFirstRun)');
+expectTrue('v3.8 — saveSettings: isFirstRun gate present', gateIdx > 0);
+['d.currentWeek = 1', 'd.currentDay = 1', 'd.failStreak = {}', 'd.ohpRepsPerSet = 5'].forEach(stmt => {
+  const idx = ssBody.indexOf(stmt);
+  if (idx >= 0) {
+    expectTrue(`v3.8 — saveSettings: "${stmt}" sits behind isFirstRun gate`, idx > gateIdx);
+  }
+});
+
+// 4. restartProgram must exist, must use confirm(), must do the destructive
+//    reset, and must reseed assistance weights from ASSISTANCE_LIBRARY.
+const rpStart = srcText.indexOf('function restartProgram(');
+expectTrue('v3.8 — restartProgram function present', rpStart >= 0);
+const rpEnd = srcText.indexOf('function resetAll(', rpStart);
+expectTrue('v3.8 — restartProgram boundary (resetAll follows)', rpEnd > rpStart);
+const rpBody = srcText.slice(rpStart, rpEnd);
+expectTrue('v3.8 — restartProgram uses confirm() dialog',
+  /confirm\(/.test(rpBody));
+expectTrue('v3.8 — restartProgram resets assistanceWeights to {}',
+  /d\.assistanceWeights\s*=\s*\{\}/.test(rpBody));
+expectTrue('v3.8 — restartProgram reseeds from ASSISTANCE_LIBRARY',
+  /Object\.entries\(ASSISTANCE_LIBRARY\)/.test(rpBody));
+expectTrue('v3.8 — restartProgram resets currentWeek to 1',
+  /d\.currentWeek\s*=\s*1/.test(rpBody));
+
+// 5. The Settings page button HTML must point at saveSettings (not the old
+//    "Save & Generate Program" wording) and a separate Restart Program
+//    button must exist alongside it.
+expectTrue('v3.8 — Settings page: "Save Settings" button wired to saveSettings()',
+  /onclick="saveSettings\(\)"[^>]*>\s*Save Settings\s*</.test(srcText));
+expectTrue('v3.8 — Settings page: "Restart Program" button wired to restartProgram()',
+  /onclick="restartProgram\(\)"[^>]*>\s*Restart Program\s*</.test(srcText));
+// The historical label "Save & Generate Program" can appear in source
+// comments (it's referenced in the saveSettings docblock as the bug we fixed).
+// What matters is no live button uses it.
+expectTrue('v3.8 — Settings page: no live button uses old "Save & Generate" label',
+  !/onclick="[^"]*"[^>]*>\s*Save\s*&(?:amp;)?\s*Generate\s*Program\s*</.test(srcText));
+
 // ════════════════════════════════════════════════════════════════
 // 12. TM progression logic (mirrors advanceDay)
 // ════════════════════════════════════════════════════════════════
