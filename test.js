@@ -488,6 +488,97 @@ expectTrue('v3.8 — Settings page: "Restart Program" button wired to restartPro
 expectTrue('v3.8 — Settings page: no live button uses old "Save & Generate" label',
   !/onclick="[^"]*"[^>]*>\s*Save\s*&(?:amp;)?\s*Generate\s*Program\s*</.test(srcText));
 
+// ── Source-level drift detectors for v3.9 progression logic ──
+// v3.9 added: near-miss bucket, near-miss streak counter, wave trigger at 3,
+// pump-protocol always +2.5, broadened auto-anchor (counts failed-set weight).
+// These detectors lock in the structural invariants in the real code, since
+// the simulator-based tests in section 18 are spec-only.
+section('v3.9 — source-level drift detectors for progression logic');
+
+// Locate the assistance forEach block (between "// ── ASSISTANCE ──" and the
+// closing `});` that's followed by the workout-notes textarea lookup).
+const asStart = srcText.indexOf('// ── ASSISTANCE ──');
+expectTrue('ASSISTANCE block marker present', asStart >= 0);
+const asEnd = srcText.indexOf('const notesEl = document.getElementById(\'workout-notes\')', asStart);
+expectTrue('ASSISTANCE block boundary (notesEl follows)', asEnd > asStart);
+const asBody = srcText.slice(asStart, asEnd);
+
+// 1. d.nearMissStreak field declared in defaultData
+expectTrue('v3.9 — nearMissStreak field in defaultData',
+  /nearMissStreak:\s*\{\}/.test(srcText));
+
+// 2. nearMissStreak is initialized in saveSettings first-run AND restartProgram
+const ssStart2 = srcText.indexOf('function saveSettings()');
+const rpStart2 = srcText.indexOf('function restartProgram(');
+const resetEnd = srcText.indexOf('function resetAll(', rpStart2);
+const ssBlock = srcText.slice(ssStart2, rpStart2);
+const rpBlock = srcText.slice(rpStart2, resetEnd);
+expectTrue('v3.9 — saveSettings first-run resets nearMissStreak',
+  /d\.nearMissStreak\s*=\s*\{\}/.test(ssBlock));
+expectTrue('v3.9 — restartProgram resets nearMissStreak',
+  /d\.nearMissStreak\s*=\s*\{\}/.test(rpBlock));
+
+// 3. Pump-protocol always uses +2.5 increment, regardless of group
+expectTrue('v3.9 — groupInc override: pump → 2.5',
+  /failProtocol\s*===\s*['"]pump['"][\s\S]{0,120}?\?\s*2\.5/.test(asBody));
+
+// 4. Broadened actualMax: counts both Done and Failed set weights
+expectTrue('v3.9 — failed-set weight tracked (failedWeights array)',
+  /failedWeights\.push/.test(asBody));
+expectTrue('v3.9 — actualMax computed over Done OR Failed sets',
+  /actualWeights\.concat\(\s*failedWeights\s*\)/.test(asBody));
+
+// 5. Near-miss bucket criteria: failedSetIndices, failedRepDeficits arrays
+expectTrue('v3.9 — failedSetIndices tracked',
+  /failedSetIndices\.push\(\s*si\s*\)/.test(asBody));
+expectTrue('v3.9 — failedRepDeficits tracked',
+  /failedRepDeficits\.push/.test(asBody));
+
+// 6. Near-miss criteria: !earlySetFailed && totalDeficit <= 2 && maxDeficit <= 2
+expectTrue('v3.9 — near-miss criteria: early-set check',
+  /earlySetFailed\s*=\s*failedSetIndices\.some\(\s*i\s*=>\s*i\s*<\s*2\s*\)/.test(asBody));
+expectTrue('v3.9 — near-miss criteria: totalDeficit <= 2',
+  /totalDeficit\s*<=\s*2/.test(asBody));
+expectTrue('v3.9 — near-miss criteria: maxDeficit <= 2',
+  /maxDeficit\s*<=\s*2/.test(asBody));
+
+// 7. Wave trigger: nearMissStreak >= 3
+expectTrue('v3.9 — wave trigger at nearMissStreak >= 3',
+  /d\.nearMissStreak\[exName\]\s*>=\s*3/.test(asBody));
+
+// 8. Wave: bumps weight by groupInc and resets reps to bottom of range
+expectTrue('v3.9 — wave: weight + groupInc',
+  /aw\.weight\s*\+\s*groupInc/.test(asBody));
+expectTrue('v3.9 — wave: reps → bottom of range (repRange[0])',
+  /repTarget:\s*exDef\.repRange\[0\]/.test(asBody));
+
+// 9. Wave: streak resets after firing
+expectTrue('v3.9 — wave: nearMissStreak reset to 0',
+  /d\.nearMissStreak\[exName\]\s*=\s*0/.test(asBody));
+
+// 10. Real-fail path: resets nearMissStreak (this isn't a near-miss session)
+const realFailRegion = asBody.slice(asBody.indexOf('Real-fail'));
+expectTrue('v3.9 — real-fail path resets nearMissStreak',
+  /d\.nearMissStreak\[exName\]\s*=\s*0/.test(realFailRegion));
+
+// 11. Auto-anchor: resets BOTH streaks (leveling up invalidates stuck patterns)
+const anchorIdx = asBody.indexOf('lifted heavier than prescribed');
+expectTrue('v3.9 — auto-anchor block found', anchorIdx >= 0);
+const anchorBlock = asBody.slice(anchorIdx, anchorIdx + 600);
+expectTrue('v3.9 — auto-anchor: failStreak reset',     /d\.failStreak\[exName\]\s*=\s*0/.test(anchorBlock));
+expectTrue('v3.9 — auto-anchor: nearMissStreak reset', /d\.nearMissStreak\[exName\]\s*=\s*0/.test(anchorBlock));
+
+// 12. Clean-session path: resets BOTH streaks
+const cleanIdx = asBody.indexOf('allDone && actualWeights.length > 0');
+expectTrue('v3.9 — clean-session block found', cleanIdx >= 0);
+const cleanBlock = asBody.slice(cleanIdx, cleanIdx + 200);
+expectTrue('v3.9 — clean session: failStreak reset',     /d\.failStreak\[exName\]\s*=\s*0/.test(cleanBlock));
+expectTrue('v3.9 — clean session: nearMissStreak reset', /d\.nearMissStreak\[exName\]\s*=\s*0/.test(cleanBlock));
+
+// 13. Migration safety: existing user data without nearMissStreak gets defaulted
+expectTrue('v3.9 — runtime guard: nearMissStreak defaulted if missing',
+  /if\s*\(!d\.nearMissStreak\)\s*d\.nearMissStreak\s*=\s*\{\}/.test(srcText));
+
 // ════════════════════════════════════════════════════════════════
 // 12. TM progression logic (mirrors advanceDay)
 // ════════════════════════════════════════════════════════════════
@@ -685,573 +776,537 @@ const ohpDeload = generateOHPSets(5, 135, 5, BAR, PLATE);
 expectTrue('OHP deload: is returned object',         typeof ohpDeload === 'object');
 
 // ════════════════════════════════════════════════════════════════
-// 18. calcConsistency — streak and attendance
-// ════════════════════════════════════════════════════════════════
-section('calcConsistency — streak and attendance');
-
-function makeLogs(weeks) {
-  // weeks: array of week numbers that have at least one non-skipped workout
-  return weeks.map(w => ({ week: w, day: 1, date: new Date().toISOString(), exercises: [] }));
-}
-
-// No logs → streak 0, attendance 0/0
-const noLogs = calcConsistency([], 1);
-expect('No logs: streak = 0',        noLogs.streak, 0);
-expect('No logs: done = 0',          noLogs.done,   0);
-expect('No logs: total = 0',         noLogs.total,  0);
-
-// Perfect 4-week streak (weeks 1-4, currently on week 5)
-const perfect4 = calcConsistency(makeLogs([1,2,3,4]), 5);
-expect('4-week streak: streak = 4',  perfect4.streak, 4);
-expect('4-week streak: done = 4',    perfect4.done,   4);
-expect('4-week streak: total = 4',   perfect4.total,  4);
-
-// Missed week 3 — streak breaks (only weeks 4 counted going back from week 5)
-const gap = calcConsistency(makeLogs([1,2,4]), 5);
-expect('Gap at week 3: streak = 1',  gap.streak, 1); // only week 4 is contiguous
-expect('Gap at week 3: done = 3',    gap.done,   3); // 3 weeks done out of 4 elapsed
-
-// Currently in week 3, already trained this week → streak includes current week
-const currentIncluded = calcConsistency(makeLogs([1,2,3]), 3);
-expect('Trained this week: streak = 3', currentIncluded.streak, 3);
-
-// Currently in week 3, NOT yet trained this week → streak counts back from week 2
-const currentEmpty = calcConsistency(makeLogs([1,2]), 3);
-expect('Not yet trained this week: streak = 2', currentEmpty.streak, 2);
-
-// Skipped workouts don't count toward streak
-const skippedLogs = [
-  { week: 1, day: 1, date: new Date().toISOString(), exercises: [] },
-  { week: 2, day: 1, date: new Date().toISOString(), skipped: true, exercises: [] },
-  { week: 3, day: 1, date: new Date().toISOString(), exercises: [] },
-];
-const withSkip = calcConsistency(skippedLogs, 4);
-expect('Skipped week 2 breaks streak', withSkip.streak, 1); // only week 3 contiguous
-
-// 12-week cap on attendance window
-const manyWeeks = makeLogs([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
-const longRun = calcConsistency(manyWeeks, 16);
-expect('12-week cap: total <= 12',   longRun.total, 12);
-expect('12-week cap: done = 12',     longRun.done,  12);
-expect('Long run: streak = 15',      longRun.streak, 15); // all 15 past weeks + current
-
-// Single workout ever, currently week 2
-const oneWorkout = calcConsistency(makeLogs([1]), 2);
-expect('One workout: streak = 1',    oneWorkout.streak, 1);
-expect('One workout: done = 1',      oneWorkout.done,   1);
-expect('One workout: total = 1',     oneWorkout.total,  1);
-
-// ════════════════════════════════════════════════════════════════
-// 9. linearRegression
-// ════════════════════════════════════════════════════════════════
-section('linearRegression');
-
-// Perfect ascending line y = 2x + 10
-const ascPts = [{x:0,y:10},{x:1,y:12},{x:2,y:14},{x:3,y:16}];
-const ascReg = linearRegression(ascPts);
-expectClose('slope of y=2x+10 = 2',     ascReg.slope,     2,   0.001);
-expectClose('intercept of y=2x+10 = 10',ascReg.intercept, 10,  0.001);
-
-// Perfect flat line y = 5
-const flatPts = [{x:0,y:5},{x:1,y:5},{x:2,y:5}];
-const flatReg = linearRegression(flatPts);
-expectClose('flat line: slope = 0',      flatReg.slope,     0,   0.001);
-expectClose('flat line: intercept = 5',  flatReg.intercept, 5,   0.001);
-
-// Too few points → null
-expect('linearRegression with 1 pt returns null', linearRegression([{x:0,y:10}]), null);
-expect('linearRegression with 0 pts returns null', linearRegression([]), null);
-
-// Slope from realistic bench data (weeks 1-4, gains ~2.5 lbs/wk)
-const benchPts = [{x:1,y:240},{x:2,y:242},{x:3,y:245},{x:4,y:247}];
-const benchReg = linearRegression(benchPts);
-expectTrue('bench regression: slope > 0', benchReg && benchReg.slope > 0);
-expectTrue('bench regression: slope reasonable (1–5 lbs/wk)', benchReg && benchReg.slope >= 1 && benchReg.slope <= 5);
-
-// ════════════════════════════════════════════════════════════════
-// 10. getImplied1RMHistory
-// ════════════════════════════════════════════════════════════════
-section('getImplied1RMHistory');
-
-// Empty / missing data
-expect('empty logs → []', JSON.stringify(getImplied1RMHistory({ workoutLogs: [] })), '[]');
-expect('null d → []', JSON.stringify(getImplied1RMHistory(null)), '[]');
-
-// Single heavy bench log with RPE 8 — implied 1RM = 245 / 0.94 ≈ 261
-const singleLog = {
-  workoutLogs: [{
-    week: 1, day: 1, date: '2026-01-07',
-    exercises: [{
-      name: 'Bench Press',
-      sets: [
-        { weight: 245, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 },
-        { weight: 205, reps: 5, done: true, fail: false, isSingle: false },
-      ]
-    }]
-  }]
-};
-const h1 = getImplied1RMHistory(singleLog);
-expect('one single: length = 1', h1.length, 1);
-expectClose('one single: implied 1RM from RPE 8 ≈ 261', h1[0].rm, Math.round(245 / 0.94), 1);
-
-// Single with no RPE → weight used directly as best estimate
-const noRPELog = {
-  workoutLogs: [{
-    week: 2, day: 1, date: '2026-01-14',
-    exercises: [{
-      name: 'Bench Press',
-      sets: [{ weight: 250, reps: 1, done: true, fail: false, isSingle: true, rpe: null }]
-    }]
-  }]
-};
-const h2 = getImplied1RMHistory(noRPELog);
-expect('no RPE: length = 1', h2.length, 1);
-expect('no RPE: rm = weight directly', h2[0].rm, 250);
-
-// Failed single should be excluded
-const failLog = {
-  workoutLogs: [{
-    week: 3, day: 1, date: '2026-01-21',
-    exercises: [{
-      name: 'Bench Press',
-      sets: [{ weight: 260, reps: 1, done: false, fail: true, isSingle: true, rpe: 10 }]
-    }]
-  }]
-};
-expect('failed single excluded: length = 0', getImplied1RMHistory(failLog).length, 0);
-
-// Non-Day1 log with no isSingle set should be excluded
-const noBenchLog = {
-  workoutLogs: [{
-    week: 1, day: 2, date: '2026-01-08',
-    exercises: [{
-      name: 'Bench Press',
-      sets: [{ weight: 185, reps: 6, done: true, fail: false, isSingle: false }]
-    }]
-  }]
-};
-expect('volume bench (no single): excluded', getImplied1RMHistory(noBenchLog).length, 0);
-
-// Multiple logs sorted by week
-const multiLog = {
-  workoutLogs: [
-    { week: 3, day: 1, date: '2026-01-21', exercises: [{ name: 'Bench Press', sets: [{ weight: 250, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 }] }] },
-    { week: 1, day: 1, date: '2026-01-07', exercises: [{ name: 'Bench Press', sets: [{ weight: 240, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 }] }] },
-    { week: 2, day: 1, date: '2026-01-14', exercises: [{ name: 'Bench Press', sets: [{ weight: 245, reps: 1, done: true, fail: false, isSingle: true, rpe: 8 }] }] },
-  ]
-};
-const hMulti = getImplied1RMHistory(multiLog);
-expect('multi: sorted by week, length = 3', hMulti.length, 3);
-expect('multi: first entry is wk 1', hMulti[0].week, 1);
-expect('multi: last entry is wk 3',  hMulti[2].week, 3);
-expectTrue('multi: rms ascending', hMulti[0].rm <= hMulti[1].rm && hMulti[1].rm <= hMulti[2].rm);
-
-// ════════════════════════════════════════════════════════════════
-// 11. projectGoalDate
-// ════════════════════════════════════════════════════════════════
-section('projectGoalDate');
-
-// Not enough data
-expect('< 2 points → null', projectGoalDate([{week:1,rm:240,date:'2026-01-07'}], 300), null);
-
-// Negative / zero slope → null
-const flatHistory = [
-  {week:1, rm:250, date:'2026-01-07'},
-  {week:2, rm:250, date:'2026-01-14'},
-];
-expect('flat trendline → null', projectGoalDate(flatHistory, 300), null);
-
-const descHistory = [
-  {week:1, rm:260, date:'2026-01-07'},
-  {week:2, rm:255, date:'2026-01-14'},
-];
-expect('declining trendline → null', projectGoalDate(descHistory, 300), null);
-
-// Already at or above goal per trendline → null
-const nearGoalHistory = [
-  {week:1, rm:298, date:'2026-01-07'},
-  {week:2, rm:302, date:'2026-01-14'},
-];
-const alreadyThere = projectGoalDate(nearGoalHistory, 300);
-expect('trendline already at goal → null', alreadyThere, null);
-
-// Realistic projection — should return a Date in the future
-const realisticHistory = [
-  {week:1,  rm:240, date:'2026-01-07'},
-  {week:5,  rm:250, date:'2026-02-04'},
-  {week:9,  rm:260, date:'2026-03-04'},
-  {week:13, rm:270, date:'2026-04-01'},
-];
-const projD = projectGoalDate(realisticHistory, 300);
-expectTrue('realistic projection: returns a Date', projD instanceof Date);
-expectTrue('realistic projection: in the future', projD && projD > new Date('2026-01-01'));
-expectTrue('realistic projection: not impossibly far (< 10 years)', projD && projD < new Date('2036-01-01'));
-
-// ════════════════════════════════════════════════════════════════
-// 12. Cycle boundaries — generateBenchSets
-// ════════════════════════════════════════════════════════════════
-section('Cycle boundaries — deload triggers ONLY on week % 5 === 0');
-
-function isDeloadLabel(info) {
-  return /deload/i.test(info.label || '');
-}
-
-// First cycle: weeks 1-5
-expectTrue('Week 1 heavy: not deload',  !isDeloadLabel(generateBenchSets('heavy',  1, TM, BAR, PLATE)));
-expectTrue('Week 4 heavy: not deload',  !isDeloadLabel(generateBenchSets('heavy',  4, TM, BAR, PLATE)));
-expectTrue('Week 5 heavy: DELOAD',       isDeloadLabel(generateBenchSets('heavy',  5, TM, BAR, PLATE)));
-expectTrue('Week 6 heavy: not deload',  !isDeloadLabel(generateBenchSets('heavy',  6, TM, BAR, PLATE)));
-// Second cycle: weeks 6-10
-expectTrue('Week 9 heavy: not deload',  !isDeloadLabel(generateBenchSets('heavy',  9, TM, BAR, PLATE)));
-expectTrue('Week 10 heavy: DELOAD',      isDeloadLabel(generateBenchSets('heavy', 10, TM, BAR, PLATE)));
-expectTrue('Week 11 heavy: not deload', !isDeloadLabel(generateBenchSets('heavy', 11, TM, BAR, PLATE)));
-// Volume and paused same cadence
-expectTrue('Week 4 volume: not deload',  !isDeloadLabel(generateBenchSets('volume',  4, TM, BAR, PLATE)));
-expectTrue('Week 5 volume: DELOAD',       isDeloadLabel(generateBenchSets('volume',  5, TM, BAR, PLATE)));
-expectTrue('Week 6 volume: not deload',  !isDeloadLabel(generateBenchSets('volume',  6, TM, BAR, PLATE)));
-expectTrue('Week 4 paused: not deload',  !isDeloadLabel(generateBenchSets('paused',  4, TM, BAR, PLATE)));
-expectTrue('Week 5 paused: DELOAD',       isDeloadLabel(generateBenchSets('paused',  5, TM, BAR, PLATE)));
-expectTrue('Week 6 paused: not deload',  !isDeloadLabel(generateBenchSets('paused',  6, TM, BAR, PLATE)));
-// Far-future cycle: week 20 (deload), 21 (not)
-expectTrue('Week 20 heavy: DELOAD',       isDeloadLabel(generateBenchSets('heavy', 20, TM, BAR, PLATE)));
-expectTrue('Week 21 heavy: not deload', !isDeloadLabel(generateBenchSets('heavy', 21, TM, BAR, PLATE)));
-
-// ════════════════════════════════════════════════════════════════
-// 13. Cycle boundaries — generateOHPSets
-// ════════════════════════════════════════════════════════════════
-section('Cycle boundaries — generateOHPSets deload cadence');
-
-expectTrue('Week 4 OHP: not deload',  !isDeloadLabel(generateOHPSets(4,  90, 5, BAR, PLATE)));
-expectTrue('Week 5 OHP: DELOAD',       isDeloadLabel(generateOHPSets(5,  90, 5, BAR, PLATE)));
-expectTrue('Week 6 OHP: not deload',  !isDeloadLabel(generateOHPSets(6,  90, 5, BAR, PLATE)));
-expectTrue('Week 10 OHP: DELOAD',      isDeloadLabel(generateOHPSets(10, 90, 5, BAR, PLATE)));
-expectTrue('Week 15 OHP: DELOAD',      isDeloadLabel(generateOHPSets(15, 90, 5, BAR, PLATE)));
-// Deload OHP structure: 3 sets of 5, at 70% OHP weight
-const ohpDeloadStruct = generateOHPSets(5, 100, 5, BAR, PLATE);
-expect('OHP deload set count = 3',    ohpDeloadStruct.sets.length, 3);
-expect('OHP deload target reps = 5',  ohpDeloadStruct.sets[0].targetReps, 5);
-expect('OHP deload weight = 70 (70% of 100)', ohpDeloadStruct.sets[0].targetWeight, roundToPlate(100 * 0.70, BAR, PLATE));
-// Normal OHP: 4 sets
-const ohpNormalStruct = generateOHPSets(3, 100, 5, BAR, PLATE);
-expect('OHP normal set count = 4',    ohpNormalStruct.sets.length, 4);
-
-// ════════════════════════════════════════════════════════════════
-// 14. Schedule tab — cycle-cadence drift detection
-// ════════════════════════════════════════════════════════════════
-// The Schedule tab's renderSchedule simulation must use the same cycle
-// cadence as the rest of the app. Currently it uses `simWeek % 4` which
-// is a bug. This test reads index.html directly and flags the pattern.
-// When Phase 3 fixes it, this test will pass.
-section('Schedule projection — no 4-week cycle drift in renderSchedule');
-
-const sourceText = fs.readFileSync(__dirname + '/index.html', 'utf8');
-const fourWeekPatternMatches = sourceText.match(/simWeek\s*%\s*4\b/g) || [];
-expect('renderSchedule uses 5-week cycle (no `simWeek % 4` pattern)',
-  fourWeekPatternMatches.length, 0);
-
-// Spec-form test of what the simulation SHOULD compute. Mirror in a pure
-// function until the inline logic is extracted (tracked in Phase 4).
-function simulateScheduleDeload(simWeek) {
-  return simWeek % 5 === 0;
-}
-expect('Schedule sim: week 4 → not deload',  simulateScheduleDeload(4),  false);
-expect('Schedule sim: week 5 → deload',      simulateScheduleDeload(5),  true);
-expect('Schedule sim: week 8 → not deload',  simulateScheduleDeload(8),  false);
-expect('Schedule sim: week 10 → deload',     simulateScheduleDeload(10), true);
-expect('Schedule sim: week 12 → not deload', simulateScheduleDeload(12), false);
-
-// ════════════════════════════════════════════════════════════════
-// 15. Beat Up readiness modifier — TM × 0.95, session-only
-// ════════════════════════════════════════════════════════════════
-// Spec of the inline modifier in the Today renderer. Reimplemented
-// here until extracted (tracked in Phase 4).
-section('Beat Up modifier — TM × 0.95, session-only');
-
-function applyBeatUpModifier(tm, barWeight, smallestPlate) {
-  return roundToPlate(tm * 0.95, barWeight, smallestPlate);
-}
-
-expect('Beat Up: TM 300 → 285 (plate-legal)',
-  applyBeatUpModifier(300, BAR, PLATE), roundToPlate(300 * 0.95, BAR, PLATE));
-expect('Beat Up: TM 275 → 260',
-  applyBeatUpModifier(275, BAR, PLATE), roundToPlate(275 * 0.95, BAR, PLATE));
-expect('Beat Up: TM 200 → 190',
-  applyBeatUpModifier(200, BAR, PLATE), roundToPlate(200 * 0.95, BAR, PLATE));
-expectTrue('Beat Up: strictly less than TM for non-trivial weights',
-  applyBeatUpModifier(300, BAR, PLATE) < 300);
-expect('Beat Up: result is plate-legal',
-  (applyBeatUpModifier(275, BAR, PLATE) - BAR) % 5, 0);
-
-// OHP also takes the modifier
-expect('Beat Up OHP: 100 → 95',
-  applyBeatUpModifier(100, BAR, PLATE), roundToPlate(100 * 0.95, BAR, PLATE));
-
-// ════════════════════════════════════════════════════════════════
-// 16. Volume day RPE → weight adjustment
-// ════════════════════════════════════════════════════════════════
-// Spec of the volume day weight-adjustment logic from logWorkout.
-// Uses === 8 (strict), distinct from heavy day's ≤ 8 shape. Input is
-// parseInt-coerced in the app, so only integer RPEs reach this logic.
-section('Volume day weight adjustment (RPE, integer input)');
-
-function simulateVolumeWeightAdvance(currentWeight, rpe) {
-  let w = currentWeight;
-  if (rpe === null || rpe === undefined || isNaN(rpe)) return w;
-  if (rpe <= 7)        w = roundToPlate(w + 5,   BAR, PLATE);
-  else if (rpe === 8)  w = roundToPlate(w + 2.5, BAR, PLATE);
-  else if (rpe <= 9)   { /* hold */ }
-  else                 w = roundToPlate(w - 2.5, BAR, PLATE);
-  return w;
-}
-
-// 205 is plate-legal (45 + 160); +2.5 rounds to 210, +5 to 210.
-expect('Volume RPE 6 → +5', simulateVolumeWeightAdvance(205, 6), roundToPlate(210, BAR, PLATE));
-expect('Volume RPE 7 → +5', simulateVolumeWeightAdvance(205, 7), roundToPlate(210, BAR, PLATE));
-expect('Volume RPE 8 → +2.5 (rounds to 210)', simulateVolumeWeightAdvance(205, 8), roundToPlate(207.5, BAR, PLATE));
-expect('Volume RPE 9 → hold', simulateVolumeWeightAdvance(205, 9), 205);
-expect('Volume RPE 10 → −2.5 (rounds back at plate-legal)',
-  simulateVolumeWeightAdvance(205, 10), roundToPlate(202.5, BAR, PLATE));
-// No RPE logged → no change
-expect('Volume no RPE → hold', simulateVolumeWeightAdvance(205, null), 205);
-expect('Volume NaN RPE → hold', simulateVolumeWeightAdvance(205, NaN), 205);
-
-// ════════════════════════════════════════════════════════════════
-// 17. FAIL_PROTOCOLS — strength / hypertrophy / pump
-// ════════════════════════════════════════════════════════════════
-section('FAIL_PROTOCOLS — per-protocol next-session rules');
-
-// strength: weight × 0.90 rounded to 2.5, reps reset to bottom
-expect('strength.newWeight(100) → 90',  FAIL_PROTOCOLS.strength.newWeight(100), 90);
-expect('strength.newWeight(95) → 85',   FAIL_PROTOCOLS.strength.newWeight(95),  Math.round(95 * 0.90 / 2.5) * 2.5);
-expect('strength.newReps reset to bottom', FAIL_PROTOCOLS.strength.newReps(10, [6, 10]), 6);
-
-// hypertrophy: weight unchanged, reps reset to bottom
-expect('hypertrophy.newWeight unchanged', FAIL_PROTOCOLS.hypertrophy.newWeight(100), 100);
-expect('hypertrophy.newReps reset to bottom', FAIL_PROTOCOLS.hypertrophy.newReps(12, [8, 12]), 8);
-
-// pump: weight unchanged, reps = max(bottom, current − 1)
-expect('pump.newWeight unchanged', FAIL_PROTOCOLS.pump.newWeight(100), 100);
-expect('pump.newReps: 12 → 11 with [10,15]', FAIL_PROTOCOLS.pump.newReps(12, [10, 15]), 11);
-expect('pump.newReps: 10 → 10 (floor at bottom)', FAIL_PROTOCOLS.pump.newReps(10, [10, 15]), 10);
-expect('pump.newReps: 8 → 10 (already below bottom? clamps up)',
-  FAIL_PROTOCOLS.pump.newReps(8, [10, 15]), 10);
-
-// Instructions return strings
-expectTrue('strength.getInstruction returns string',
-  typeof FAIL_PROTOCOLS.strength.getInstruction(100, [6, 10]) === 'string');
-expectTrue('hypertrophy.getInstruction returns string',
-  typeof FAIL_PROTOCOLS.hypertrophy.getInstruction(100, [8, 12]) === 'string');
-expectTrue('pump.getInstruction returns string',
-  typeof FAIL_PROTOCOLS.pump.getInstruction(100, [10, 15]) === 'string');
-
-// ════════════════════════════════════════════════════════════════
-// 18. Assistance progression decision tree
+// 18. Assistance progression decision tree (v3.9)
 // ════════════════════════════════════════════════════════════════
 // Spec of the forEach progression block in logWorkout. Reimplemented
 // here until extracted (tracked in Phase 4).
-section('Assistance progression decision tree');
+//
+// v3.9 expanded the spec:
+//   - Auto-anchor up: if actualMax > aw.weight (counting weight on Done OR
+//     Failed sets), store actualMax and reset reps to bottom of range.
+//     A failed set still proves the user handled the load until rep failure.
+//   - Near-miss vs real-fail bucket on `anyFail` sessions:
+//       near-miss = failed sets only in last position(s), total deficit ≤2,
+//                   no single set missed by >2. Holds without penalty.
+//       real-fail = anything else (early-set fail, big deficit). Existing
+//                   fail-streak path applies.
+//   - Near-miss streak counter, parallel to fail-streak. Increments on
+//     near-miss, resets on clean sweep / real-fail / wave.
+//   - Wave trigger: 3 consecutive near-miss sessions → bump weight,
+//     reset reps to bottom. Increment is +5 for back/chest/triceps,
+//     +2.5 for everything else AND ALWAYS +2.5 for pump-protocol
+//     exercises (rear delt fly, lateral raise) — pump work needs gentler
+//     overload than strength work.
+//   - Clean sessions reset BOTH streaks.
+// sourceText was historically declared in this section's preamble
+// (it's used by the Day 1 ordering check and other source-level scans below).
+const sourceText = fs.readFileSync(__dirname + '/index.html', 'utf8');
+
+section('Assistance progression decision tree (v3.9)');
 
 function simulateAssistanceProgression(aw, exDef, summary) {
-  // summary: { anyFail, anyDone, anySkipped, allDone, actualMax, avgReps, effortPattern, priorStreak }
-  if (summary.anySkipped && !summary.anyDone && !summary.anyFail) {
-    return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-skipped' };
+  // summary: {
+  //   anyFail, anyDone, anySkipped, allDone,
+  //   actualMax,            // max weight across done OR failed sets
+  //   avgReps,              // avg across done sets (clean-session branches)
+  //   effortPattern,        // 'easy' | 'ok' | 'hard' (clean-session branches)
+  //   priorFailStreak,      // (alias: priorStreak — accepted for backward compat)
+  //   priorNearMissStreak,
+  //   failedSetIndices,     // 0-based positions of failed sets
+  //   failedRepDeficits,    // per-failed-set: repTarget - reps achieved
+  // }
+  // Returns: { weight, repTarget, note, failStreak, nearMissStreak }
+  const protocol = FAIL_PROTOCOLS[exDef.failProtocol] || FAIL_PROTOCOLS.hypertrophy;
+  // Group increment: +5 for strength groups, +2.5 otherwise. Pump protocol
+  // ALWAYS uses +2.5 regardless of group — light hypertrophy work.
+  const groupInc = exDef.failProtocol === 'pump'
+    ? 2.5
+    : ((exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5);
+  const priorFailStreak     = (summary.priorFailStreak     != null) ? summary.priorFailStreak     : (summary.priorStreak || 0);
+  const priorNearMissStreak = summary.priorNearMissStreak || 0;
+
+  // ── Auto-anchor up (broadened — counts failed-set weight) ──
+  if (summary.actualMax != null && summary.actualMax > aw.weight && (summary.anyDone || summary.anyFail)) {
+    return {
+      weight: roundWeight(summary.actualMax, exDef.group, BAR, PLATE),
+      repTarget: exDef.repRange[0],
+      note: 'advanced-lifted-heavier',
+      failStreak: 0, nearMissStreak: 0
+    };
   }
+
+  // ── All skipped ──
+  if (summary.anySkipped && !summary.anyDone && !summary.anyFail) {
+    return {
+      weight: aw.weight, repTarget: aw.repTarget,
+      note: 'held-skipped',
+      failStreak: priorFailStreak, nearMissStreak: priorNearMissStreak
+    };
+  }
+
+  // ── Any fail: near-miss vs real-fail ──
   if (summary.anyFail) {
-    const newStreak = (summary.priorStreak || 0) + 1;
-    if (newStreak >= 2) {
-      const protocol = FAIL_PROTOCOLS[exDef.failProtocol] || FAIL_PROTOCOLS.hypertrophy;
+    const failedIdx = summary.failedSetIndices || [];
+    const deficits  = summary.failedRepDeficits || [];
+    const earlyFail = failedIdx.some(i => i < 2); // sets 0, 1 are "early" — weight too heavy
+    const totalDeficit = deficits.reduce((a, b) => a + b, 0);
+    const maxDeficit   = deficits.length ? Math.max.apply(null, deficits) : 0;
+    const isNearMiss   = !earlyFail && totalDeficit <= 2 && maxDeficit <= 2;
+
+    if (isNearMiss) {
+      const newNearMiss = priorNearMissStreak + 1;
+      if (newNearMiss >= 3) {
+        // ── WAVE ──
+        return {
+          weight: roundWeight(aw.weight + groupInc, exDef.group, BAR, PLATE),
+          repTarget: exDef.repRange[0],
+          note: 'wave-applied',
+          failStreak: 0, nearMissStreak: 0
+        };
+      }
+      return {
+        weight: aw.weight, repTarget: aw.repTarget,
+        note: 'held-near-miss',
+        failStreak: 0, nearMissStreak: newNearMiss
+      };
+    }
+
+    // Real-fail
+    const newFailStreak = priorFailStreak + 1;
+    if (newFailStreak >= 2) {
       return {
         weight: protocol.newWeight(aw.weight),
         repTarget: protocol.newReps(aw.repTarget, exDef.repRange),
-        note: 'fail-protocol-applied'
+        note: 'fail-protocol-applied',
+        failStreak: 0, nearMissStreak: 0
       };
     }
-    return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-first-fail' };
+    return {
+      weight: aw.weight, repTarget: aw.repTarget,
+      note: 'held-first-fail',
+      failStreak: newFailStreak, nearMissStreak: 0
+    };
   }
+
+  // ── allDone (clean session) ──
   if (summary.allDone) {
-    if (summary.actualMax > aw.weight) {
-      return {
-        weight: roundWeight(summary.actualMax, exDef.group, BAR, PLATE),
-        repTarget: exDef.repRange[0],
-        note: 'advanced-lifted-heavier'
-      };
-    }
     if (summary.avgReps >= aw.repTarget) {
       if (summary.effortPattern === 'hard') {
-        return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-hard' };
+        return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-hard', failStreak: 0, nearMissStreak: 0 };
       }
       if (summary.avgReps >= exDef.repRange[1]) {
-        const inc = (exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5;
         return {
-          weight: roundWeight(aw.weight + inc, exDef.group, BAR, PLATE),
+          weight: roundWeight(aw.weight + groupInc, exDef.group, BAR, PLATE),
           repTarget: exDef.repRange[0],
-          note: 'advanced-weight'
+          note: 'advanced-weight',
+          failStreak: 0, nearMissStreak: 0
         };
       }
       if (summary.effortPattern === 'easy') {
         return {
           weight: aw.weight,
           repTarget: Math.min(exDef.repRange[1], aw.repTarget + 2),
-          note: 'advanced-2-reps'
+          note: 'advanced-2-reps',
+          failStreak: 0, nearMissStreak: 0
         };
       }
-      return { weight: aw.weight, repTarget: aw.repTarget + 1, note: 'advanced-1-rep' };
+      return { weight: aw.weight, repTarget: aw.repTarget + 1, note: 'advanced-1-rep', failStreak: 0, nearMissStreak: 0 };
     }
-    return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-below-target' };
+    return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-below-target', failStreak: 0, nearMissStreak: 0 };
   }
-  return { weight: aw.weight, repTarget: aw.repTarget, note: 'held-incomplete' };
+
+  // ── Partial (some done, some skipped, no fails) ──
+  return {
+    weight: aw.weight, repTarget: aw.repTarget,
+    note: 'held-incomplete',
+    failStreak: priorFailStreak, nearMissStreak: priorNearMissStreak
+  };
 }
 
-// Fixture: back-group strength exercise (+5 increment), [6-10] range
-const rowDef = { group: 'back', sets: 4, repRange: [6, 10], startWeight: 90, failProtocol: 'strength' };
-// Fixture: bicep hypertrophy exercise (+2.5 increment), [8-12] range
-const curlDef = { group: 'biceps', sets: 4, repRange: [8, 12], startWeight: 65, failProtocol: 'hypertrophy' };
-// Fixture: shoulder pump exercise (+2.5), [10-15] range
-const lateralDef = { group: 'shoulders', sets: 4, repRange: [10, 15], startWeight: 20, failProtocol: 'pump' };
+// Fixtures
+const rowDef     = { group: 'back',      sets: 4, repRange: [6, 10],  startWeight: 90, failProtocol: 'strength'    };
+const curlDef    = { group: 'biceps',    sets: 4, repRange: [8, 12],  startWeight: 65, failProtocol: 'hypertrophy' };
+const lateralDef = { group: 'shoulders', sets: 4, repRange: [10, 15], startWeight: 20, failProtocol: 'pump'        };
+// Pump-protocol exercise that happens to be in a strength group (defensive — currently no real
+// example, but the override must be group-agnostic).
+const pumpStrengthDef = { group: 'back', sets: 4, repRange: [10, 15], startWeight: 50, failProtocol: 'pump'        };
 
-// — All skipped: hold
+// ── Clean-session branches ──────────────────────────────────────
+
+// All skipped
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 6 }, rowDef,
-    { anyFail: false, anyDone: false, anySkipped: true, allDone: false, priorStreak: 0 }
+    { anyFail: false, anyDone: false, anySkipped: true, allDone: false }
   );
   expect('All skipped: weight held', r.weight, 90);
   expect('All skipped: reps held',   r.repTarget, 6);
   expect('All skipped: note',        r.note, 'held-skipped');
 }
 
-// — First fail: hold
-{
-  const r = simulateAssistanceProgression(
-    { weight: 90, repTarget: 8 }, rowDef,
-    { anyFail: true, anyDone: true, anySkipped: false, allDone: false, priorStreak: 0 }
-  );
-  expect('First fail (streak 0→1): weight held', r.weight, 90);
-  expect('First fail: reps held',                r.repTarget, 8);
-  expect('First fail: note',                     r.note, 'held-first-fail');
-}
-
-// — Second fail (strength protocol): weight drops 10%, reps reset
-{
-  const r = simulateAssistanceProgression(
-    { weight: 100, repTarget: 10 }, rowDef,
-    { anyFail: true, anyDone: true, anySkipped: false, allDone: false, priorStreak: 1 }
-  );
-  expect('Second fail strength: weight × 0.90',  r.weight, 90);
-  expect('Second fail strength: reps → bottom',  r.repTarget, 6);
-  expect('Second fail: note',                    r.note, 'fail-protocol-applied');
-}
-
-// — Second fail (hypertrophy protocol): weight held, reps reset
-{
-  const r = simulateAssistanceProgression(
-    { weight: 65, repTarget: 12 }, curlDef,
-    { anyFail: true, anyDone: true, anySkipped: false, allDone: false, priorStreak: 1 }
-  );
-  expect('Second fail hypertrophy: weight held',   r.weight, 65);
-  expect('Second fail hypertrophy: reps → bottom', r.repTarget, 8);
-}
-
-// — Second fail (pump protocol): weight held, reps = max(bottom, current-1)
-{
-  const r = simulateAssistanceProgression(
-    { weight: 20, repTarget: 13 }, lateralDef,
-    { anyFail: true, anyDone: true, anySkipped: false, allDone: false, priorStreak: 1 }
-  );
-  expect('Second fail pump: weight held', r.weight, 20);
-  expect('Second fail pump: reps → current-1', r.repTarget, 12);
-}
-
-// — All done, avgReps at rep target but below ceiling: +1 rep (ok effort)
+// Hit target below ceiling, ok effort: +1 rep
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 8 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 90, avgReps: 8, effortPattern: 'ok', priorStreak: 0 }
+      actualMax: 90, avgReps: 8, effortPattern: 'ok' }
   );
-  expect('Hit target below ceiling (ok): +1 rep', r.repTarget, 9);
-  expect('Hit target below ceiling (ok): weight held', r.weight, 90);
-  expect('Hit target below ceiling (ok): note', r.note, 'advanced-1-rep');
+  expect('Hit target below ceiling (ok): +1 rep',     r.repTarget, 9);
+  expect('Hit target below ceiling (ok): weight held', r.weight,    90);
+  expect('Hit target below ceiling (ok): note',        r.note,      'advanced-1-rep');
 }
 
-// — All done, avgReps at target, easy effort: +2 reps
+// Hit target below ceiling, easy effort: +2 reps
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 8 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 90, avgReps: 8, effortPattern: 'easy', priorStreak: 0 }
+      actualMax: 90, avgReps: 8, effortPattern: 'easy' }
   );
-  expect('Hit target below ceiling (easy): +2 reps', r.repTarget, 10);
-  expect('Hit target below ceiling (easy): weight held', r.weight, 90);
+  expect('Hit target below ceiling (easy): +2 reps',     r.repTarget, 10);
+  expect('Hit target below ceiling (easy): weight held', r.weight,    90);
 }
 
-// — All done, avgReps at target, hard effort: hold
+// Hit target, hard effort: hold
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 8 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 90, avgReps: 8, effortPattern: 'hard', priorStreak: 0 }
+      actualMax: 90, avgReps: 8, effortPattern: 'hard' }
   );
-  expect('Hit target, hard effort: weight held', r.weight, 90);
+  expect('Hit target, hard effort: weight held', r.weight,    90);
   expect('Hit target, hard effort: reps held',   r.repTarget, 8);
-  expect('Hit target, hard effort: note', r.note, 'held-hard');
+  expect('Hit target, hard effort: note',        r.note,      'held-hard');
 }
 
-// — Hit ceiling (avgReps >= repRange[1]), back group: +5 lbs, reset to bottom
+// Hit ceiling, back group: +5 lbs, reset reps to bottom
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 10 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 90, avgReps: 10, effortPattern: 'ok', priorStreak: 0 }
+      actualMax: 90, avgReps: 10, effortPattern: 'ok' }
   );
-  expect('Ceiling hit, back group: +5 lbs', r.weight, 95);
+  expect('Ceiling hit, back group: +5 lbs',       r.weight,    95);
   expect('Ceiling hit, back group: reps → bottom', r.repTarget, 6);
-  expect('Ceiling hit: note', r.note, 'advanced-weight');
+  expect('Ceiling hit: note',                     r.note,      'advanced-weight');
 }
 
-// — Hit ceiling, biceps group: +2.5 lbs
+// Hit ceiling, biceps group: +2.5 lbs
 {
   const r = simulateAssistanceProgression(
     { weight: 65, repTarget: 12 }, curlDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 65, avgReps: 12, effortPattern: 'ok', priorStreak: 0 }
+      actualMax: 65, avgReps: 12, effortPattern: 'ok' }
   );
-  expect('Ceiling hit, biceps: +2.5 lbs', r.weight, roundWeight(67.5, 'biceps', BAR, PLATE));
-  expect('Ceiling hit, biceps: reps → bottom', r.repTarget, 8);
+  expect('Ceiling hit, biceps: +2.5 lbs',       r.weight,    roundWeight(67.5, 'biceps', BAR, PLATE));
+  expect('Ceiling hit, biceps: reps → bottom',  r.repTarget, 8);
 }
 
-// — Lifted heavier than prescribed: anchor to actual max
+// Below rep target: hold (clean session, didn't hit reps but no failed sets)
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 8 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 100, avgReps: 8, effortPattern: 'ok', priorStreak: 0 }
+      actualMax: 90, avgReps: 7, effortPattern: 'ok' }
   );
-  expect('Lifted heavier: weight anchors to actual max', r.weight, 100);
-  expect('Lifted heavier: reps → bottom', r.repTarget, 6);
-  expect('Lifted heavier: note', r.note, 'advanced-lifted-heavier');
-}
-
-// — Below rep target: hold
-{
-  const r = simulateAssistanceProgression(
-    { weight: 90, repTarget: 8 }, rowDef,
-    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 90, avgReps: 7, effortPattern: 'ok', priorStreak: 0 }
-  );
-  expect('Below rep target: weight held', r.weight, 90);
+  expect('Below rep target: weight held', r.weight,    90);
   expect('Below rep target: reps held',   r.repTarget, 8);
-  expect('Below rep target: note', r.note, 'held-below-target');
+  expect('Below rep target: note',        r.note,      'held-below-target');
 }
 
-// — Partial session (some done, some skipped, no fails): hold
+// Partial session (some done, some skipped, no fails): hold
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 8 }, rowDef,
-    { anyFail: false, anyDone: true, anySkipped: true, allDone: false, priorStreak: 0 }
+    { anyFail: false, anyDone: true, anySkipped: true, allDone: false }
   );
   expect('Partial (no fail): weight held', r.weight, 90);
-  expect('Partial (no fail): note', r.note, 'held-incomplete');
+  expect('Partial (no fail): note',        r.note,   'held-incomplete');
+}
+
+// ── Auto-anchor up (broadened) ──────────────────────────────────
+
+// Lifted heavier than prescribed (allDone): anchor to actual, reset reps
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 8 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 100, avgReps: 8, effortPattern: 'ok' }
+  );
+  expect('Lifted heavier (allDone): weight anchors',     r.weight,    100);
+  expect('Lifted heavier (allDone): reps → bottom',     r.repTarget, 6);
+  expect('Lifted heavier (allDone): note',              r.note,      'advanced-lifted-heavier');
+}
+
+// Lifted heavier, also failed last set: still anchor (failed-set weight counts)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 100,
+      failedSetIndices: [3], failedRepDeficits: [1] }
+  );
+  expect('Lifted heavier (1 fail): weight anchors',  r.weight,         100);
+  expect('Lifted heavier (1 fail): reps → bottom', r.repTarget,      6);
+  expect('Lifted heavier (1 fail): note',          r.note,           'advanced-lifted-heavier');
+  expect('Lifted heavier (1 fail): fail-streak reset', r.failStreak,     0);
+  expect('Lifted heavier (1 fail): near-miss reset',   r.nearMissStreak, 0);
+}
+
+// Lifted heavier, partial session (some skipped): still anchor
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 10 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: true, allDone: false,
+      actualMax: 105 }
+  );
+  expect('Lifted heavier (partial): weight anchors', r.weight,     105);
+  expect('Lifted heavier (partial): reps → bottom', r.repTarget,  6);
+}
+
+// ── Near-miss bucket detection ──────────────────────────────────
+
+// 4×10 prescribed, did 10/10/10/9 → near-miss
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 0 }
+  );
+  expect('Near-miss (10/10/10/9): weight held',       r.weight,         200);
+  expect('Near-miss (10/10/10/9): reps held',         r.repTarget,      10);
+  expect('Near-miss (10/10/10/9): note',              r.note,           'held-near-miss');
+  expect('Near-miss (10/10/10/9): streak → 1',        r.nearMissStreak, 1);
+  expect('Near-miss (10/10/10/9): fail-streak reset', r.failStreak,     0);
+}
+
+// 4×10 prescribed, did 10/10/10/8 → near-miss (borderline, deficit=2)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [3], failedRepDeficits: [2],
+      priorNearMissStreak: 0 }
+  );
+  expect('Near-miss (10/10/10/8): note',         r.note,           'held-near-miss');
+  expect('Near-miss (10/10/10/8): streak → 1',   r.nearMissStreak, 1);
+}
+
+// 4×10, did 10/10/9/9 → near-miss (last-two failed, total deficit 2)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [2, 3], failedRepDeficits: [1, 1],
+      priorNearMissStreak: 0 }
+  );
+  expect('Near-miss (10/10/9/9): note', r.note, 'held-near-miss');
+}
+
+// 4×10, did 10/10/10/7 → real-fail (per-set deficit > 2)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [3], failedRepDeficits: [3],
+      priorFailStreak: 0 }
+  );
+  expect('Real-fail (10/10/10/7, deficit=3): note',          r.note,           'held-first-fail');
+  expect('Real-fail (10/10/10/7): fail-streak → 1',          r.failStreak,     1);
+  expect('Real-fail (10/10/10/7): near-miss-streak reset',   r.nearMissStreak, 0);
+}
+
+// 4×10, did 10/9/10/9 → real-fail (set 2 is "early")
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [1, 3], failedRepDeficits: [1, 1],
+      priorFailStreak: 0 }
+  );
+  expect('Real-fail (10/9/10/9, set-2 fail): note',     r.note,       'held-first-fail');
+  expect('Real-fail (10/9/10/9): fail-streak → 1',      r.failStreak, 1);
+}
+
+// 4×10, did 10/10/8/8 → real-fail (total deficit 4)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [2, 3], failedRepDeficits: [2, 2],
+      priorFailStreak: 0 }
+  );
+  expect('Real-fail (10/10/8/8, total=4): note', r.note, 'held-first-fail');
+}
+
+// 4×10, did 7/9/10/10 → real-fail (early-set fail)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [0, 1], failedRepDeficits: [3, 1],
+      priorFailStreak: 0 }
+  );
+  expect('Real-fail (7/9/10/10, set-1 fail): note', r.note, 'held-first-fail');
+}
+
+// ── Near-miss streak progression ────────────────────────────────
+
+// First near-miss: streak 0 → 1
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 0 }
+  );
+  expect('1st near-miss: streak 0→1', r.nearMissStreak, 1);
+  expect('1st near-miss: weight held', r.weight, 200);
+}
+
+// Second consecutive near-miss: streak 1 → 2
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 1 }
+  );
+  expect('2nd near-miss: streak 1→2', r.nearMissStreak, 2);
+  expect('2nd near-miss: weight held', r.weight, 200);
+  expect('2nd near-miss: note', r.note, 'held-near-miss');
+}
+
+// Third consecutive near-miss: WAVE FIRES, weight bumps, reps reset, streak resets
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,  // back group → +5
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 200, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 2 }
+  );
+  expect('Wave (back group): weight +5 → 205',     r.weight,         205);
+  expect('Wave: reps → bottom of range',           r.repTarget,      6);
+  expect('Wave: note',                             r.note,           'wave-applied');
+  expect('Wave: near-miss streak resets',          r.nearMissStreak, 0);
+  expect('Wave: fail-streak resets',               r.failStreak,     0);
+}
+
+// Wave on biceps (hypertrophy group): +2.5 increment
+{
+  const r = simulateAssistanceProgression(
+    { weight: 65, repTarget: 12 }, curlDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 65, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 2 }
+  );
+  expect('Wave (biceps group): weight +2.5 → 67.5', r.weight,    roundWeight(67.5, 'biceps', BAR, PLATE));
+  expect('Wave (biceps): reps → bottom (8)',        r.repTarget, 8);
+}
+
+// Wave on pump-protocol exercise (Rear Delt Fly / Lateral Raise — shoulders): +2.5
+{
+  const r = simulateAssistanceProgression(
+    { weight: 100, repTarget: 15 }, lateralDef,  // shoulders + pump → +2.5
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 100, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 2 }
+  );
+  expect('Wave (pump): weight +2.5 → 102.5',  r.weight,    roundWeight(102.5, 'shoulders', BAR, PLATE));
+  expect('Wave (pump): reps → bottom (10)',   r.repTarget, 10);
+}
+
+// Wave on pump exercise that's miscoded into a strength group: STILL +2.5
+// (defensive — the pump-protocol override is group-agnostic)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 50, repTarget: 15 }, pumpStrengthDef,  // back + pump → +2.5 (NOT +5)
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 50, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 2 }
+  );
+  expect('Wave (pump in strength group): still +2.5', r.weight,    roundWeight(52.5, 'back', BAR, PLATE));
+  expect('Wave (pump in strength group): note',       r.note,      'wave-applied');
+}
+
+// ── Real-fail path (existing, unchanged) ────────────────────────
+
+// First real fail: hold, fail-streak 0→1, near-miss-streak resets
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 8 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 90, failedSetIndices: [0], failedRepDeficits: [3],
+      priorFailStreak: 0, priorNearMissStreak: 2 }
+  );
+  expect('1st real-fail: weight held',            r.weight,         90);
+  expect('1st real-fail: fail-streak → 1',        r.failStreak,     1);
+  expect('1st real-fail: near-miss-streak resets', r.nearMissStreak, 0);
+  expect('1st real-fail: note',                   r.note,           'held-first-fail');
+}
+
+// Second real-fail (strength): protocol — weight ×0.90, reps → bottom
+{
+  const r = simulateAssistanceProgression(
+    { weight: 100, repTarget: 10 }, rowDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 100, failedSetIndices: [0], failedRepDeficits: [3],
+      priorFailStreak: 1 }
+  );
+  expect('2nd real-fail strength: weight × 0.90', r.weight,    90);
+  expect('2nd real-fail strength: reps → bottom', r.repTarget, 6);
+  expect('2nd real-fail: note',                   r.note,      'fail-protocol-applied');
+}
+
+// Second real-fail (hypertrophy): weight held, reps → bottom
+{
+  const r = simulateAssistanceProgression(
+    { weight: 65, repTarget: 12 }, curlDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 65, failedSetIndices: [0], failedRepDeficits: [4],
+      priorFailStreak: 1 }
+  );
+  expect('2nd real-fail hypertrophy: weight held',   r.weight,    65);
+  expect('2nd real-fail hypertrophy: reps → bottom', r.repTarget, 8);
+}
+
+// Second real-fail (pump): weight held, reps current-1
+{
+  const r = simulateAssistanceProgression(
+    { weight: 20, repTarget: 13 }, lateralDef,
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 20, failedSetIndices: [0], failedRepDeficits: [4],
+      priorFailStreak: 1 }
+  );
+  expect('2nd real-fail pump: weight held',     r.weight,    20);
+  expect('2nd real-fail pump: reps → current-1', r.repTarget, 12);
+}
+
+// ── Combined edge cases ─────────────────────────────────────────
+
+// Wave fires at streak 3, next session is also near-miss → streak fresh at 1 (new weight)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 205, repTarget: 6 }, rowDef,  // post-wave weight
+    { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
+      actualMax: 205, failedSetIndices: [3], failedRepDeficits: [1],
+      priorNearMissStreak: 0 }  // streak was reset by wave
+  );
+  expect('Post-wave near-miss: streak fresh → 1', r.nearMissStreak, 1);
+  expect('Post-wave near-miss: weight held at new value', r.weight, 205);
+}
+
+// Clean sweep mid-near-miss-streak: streak resets
+{
+  const r = simulateAssistanceProgression(
+    { weight: 200, repTarget: 10 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 200, avgReps: 10, effortPattern: 'ok',
+      priorNearMissStreak: 2 }  // had been close to wave
+  );
+  expect('Clean sweep mid-near-miss-streak: streak resets', r.nearMissStreak, 0);
+  expect('Clean sweep at ceiling: +5 advance', r.weight, 205);
 }
 
 // ════════════════════════════════════════════════════════════════
