@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.7
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.8
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -865,7 +865,8 @@
       <label class="form-label">Smallest Plate Available (lbs)</label>
       <input class="form-input" type="number" id="set-plate" value="2.5" />
     </div>
-    <button class="btn btn-primary" onclick="saveSettings()" style="margin-right:10px">Save & Generate Program</button>
+    <button class="btn btn-primary" onclick="saveSettings()" style="margin-right:10px">Save Settings</button>
+    <button class="btn btn-secondary" onclick="restartProgram()" style="margin-right:10px">Restart Program</button>
     <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
   </div>
 
@@ -1441,6 +1442,16 @@ function buildBenchWarmups(topWeight, barWeight, smallestPlate, type) {
 // SETTINGS & INIT
 // ═══════════════════════════════════════════════════════════
 
+// v3.8: saveSettings() is now NON-DESTRUCTIVE for ongoing users.
+// Editing your goal, 1RM, days/week, bar, or plate updates only those fields.
+// First-run users (no assistance weights seeded yet) still get the full program
+// initialization here so onboarding works in one click. The destructive
+// reset path moved to restartProgram(), behind an explicit confirm dialog.
+//
+// Why this exists: a single button labeled "Save & Generate Program" sat on
+// the Settings page and silently wiped d.assistanceWeights every time it was
+// pressed. Any tweak to settings nuked all assistance progression back to
+// library defaults. See README for the full incident.
 function saveSettings() {
   const d = loadData();
   const rm = parseFloat(document.getElementById('set-1rm').value);
@@ -1453,25 +1464,59 @@ function saveSettings() {
 
   if (!rm || rm < 1) { alert('Please enter your estimated 1RM first.'); return; }
 
+  // First-run detection: assistanceWeights is empty until initialized once.
+  const isFirstRun = !d.assistanceWeights || Object.keys(d.assistanceWeights).length === 0;
+
+  // Always-safe config updates.
   d.settings = { goal, equipment, daysPerWeek: days, barWeight, smallestPlate };
   d.estimated1RM = rm;
   // Training max starts at ~93.5% of e1RM — the single on week 1 = TM ≈ RPE 8
   d.trainingMax = Math.round(rm * 0.935); // calibrated so week1 single ≈ 90% TM ≈ RPE 7.5–8
+  d.ohpWeight = ohpStart;
+
+  // Destructive initialization — ONLY on first run.
+  // Existing users keep their currentWeek/currentDay/failStreak/assistanceWeights/ohpRepsPerSet.
+  if (isFirstRun) {
+    d.currentWeek = 1;
+    d.currentDay = 1;
+    d.failStreak = {};
+    d.ohpRepsPerSet = 5; // tracks OHP reps toward 4×8 threshold
+    d.assistanceWeights = {};
+    Object.entries(ASSISTANCE_LIBRARY).forEach(([name, info]) => {
+      d.assistanceWeights[name] = { weight: info.startWeight, repTarget: info.repRange[0] };
+    });
+  }
+
+  saveData(d);
+  updateHeader();
+  if (isFirstRun) {
+    showPage('today');
+  }
+  if (typeof showToast === 'function') {
+    showToast(isFirstRun ? 'Program generated ✓' : 'Settings saved ✓');
+  }
+}
+
+// v3.8: explicit destructive reset — replaces the silent wipe that used to
+// hide inside saveSettings(). Keeps user settings (1RM, goal, equipment, bar,
+// plate, days/week, OHP start) but erases progression state.
+function restartProgram() {
+  if (!confirm('Restart program?\n\nThis will erase all assistance weight progression and reset you to Week 1, Day 1. Your settings (1RM, goal, equipment) will be kept.\n\nAre you sure?')) return;
+  const d = loadData();
   d.currentWeek = 1;
   d.currentDay = 1;
   d.failStreak = {};
-  d.ohpWeight = ohpStart;
-  d.ohpRepsPerSet = 5; // tracks OHP reps toward 4×8 threshold
-
-  // Initialize assistance weights
+  d.ohpRepsPerSet = 5;
   d.assistanceWeights = {};
   Object.entries(ASSISTANCE_LIBRARY).forEach(([name, info]) => {
     d.assistanceWeights[name] = { weight: info.startWeight, repTarget: info.repRange[0] };
   });
-
   saveData(d);
   updateHeader();
   showPage('today');
+  if (typeof showToast === 'function') {
+    showToast('Program restarted ✓');
+  }
 }
 
 function resetAll() {
