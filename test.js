@@ -600,11 +600,31 @@ expectTrue('v3.9 — real-fail path resets nearMissStreak',
   /d\.nearMissStreak\[exName\]\s*=\s*0/.test(realFailRegion));
 
 // 11. Auto-anchor: resets BOTH streaks (leveling up invalidates stuck patterns)
-const anchorIdx = asBody.indexOf('lifted heavier than prescribed');
-expectTrue('v3.9 — auto-anchor block found', anchorIdx >= 0);
-const anchorBlock = asBody.slice(anchorIdx, anchorIdx + 600);
+// v3.11: anchor now uses the structural marker (the if-condition) rather than
+// the note text, since the note text appears deep inside one of several
+// sub-branches now. This is more drift-resistant.
+const anchorMatch = asBody.match(/actualMax\s*>\s*aw\.weight\s*&&\s*\(anyDone\s*\|\|\s*anyFail\)\s*\)\s*\{/);
+expectTrue('v3.11 — auto-anchor block found (structural)', anchorMatch != null);
+const anchorBlockStart = anchorMatch ? anchorMatch.index : 0;
+const anchorBlock = asBody.slice(anchorBlockStart, anchorBlockStart + 2500);
 expectTrue('v3.9 — auto-anchor: failStreak reset',     /d\.failStreak\[exName\]\s*=\s*0/.test(anchorBlock));
 expectTrue('v3.9 — auto-anchor: nearMissStreak reset', /d\.nearMissStreak\[exName\]\s*=\s*0/.test(anchorBlock));
+
+// v3.11 — auto-anchor honors reps achieved at the new weight.
+// Drift guard: the auto-anchor must NOT unconditionally set repTarget to range[0]
+// before considering reps. The branching shape we want preserved:
+//   - decideAutoAnchorOutcome helper exists, OR
+//   - the anchor block contains an avgRepsAtMax computation AND a ceiling-promotion path.
+expectTrue('v3.11 — auto-anchor reads avgRepsAtMax',
+  /avgRepsAtMax/.test(anchorBlock));
+expectTrue('v3.11 — auto-anchor has ceiling-promotion branch',
+  /actualMax\s*\+\s*groupInc/.test(anchorBlock));
+expectTrue('v3.11 — decideAutoAnchorOutcome helper exported',
+  /function\s+decideAutoAnchorOutcome\s*\(/.test(srcText));
+expectTrue('v3.11 — applyV311AutoAnchorMigration helper exported',
+  /function\s+applyV311AutoAnchorMigration\s*\(/.test(srcText));
+expectTrue('v3.11 — migration is gated behind d.migrations.v3_11_autoanchor',
+  /d\.migrations\.v3_11_autoanchor/.test(srcText));
 
 // 12. Clean-session path: resets BOTH streaks
 const cleanIdx = asBody.indexOf('allDone && actualWeights.length > 0');
@@ -863,12 +883,59 @@ function simulateAssistanceProgression(aw, exDef, summary) {
   const priorFailStreak     = (summary.priorFailStreak     != null) ? summary.priorFailStreak     : (summary.priorStreak || 0);
   const priorNearMissStreak = summary.priorNearMissStreak || 0;
 
-  // ── Auto-anchor up (broadened — counts failed-set weight) ──
+  // ── Auto-anchor up (v3.11 — honor reps achieved) ──
+  // Anchor stored weight to the heaviest weight handled, then run the
+  // rep-ladder against the reps actually achieved at that weight. Pre-v3.11
+  // hard-reset to range[0]; that swallowed rep-ceiling promotions.
+  // Summary fields used (all optional, sensible defaults):
+  //   actualMax        — max weight across logged sets (required to fire)
+  //   avgRepsAtMax     — avg reps across done sets at actualMax
+  //                      (falls back to avgReps if absent)
+  //   failsAtMax       — count of failed sets at actualMax (default 0)
+  //   effortPattern    — 'easy' | 'ok' | 'hard' (default 'ok')
   if (summary.actualMax != null && summary.actualMax > aw.weight && (summary.anyDone || summary.anyFail)) {
+    const failsAtMax = summary.failsAtMax || 0;
+    const avgRepsAtMax = (summary.avgRepsAtMax != null)
+      ? summary.avgRepsAtMax
+      : (summary.avgReps != null ? summary.avgReps : 0);
+    const effort = summary.effortPattern || 'ok';
+    const anchored = roundWeight(summary.actualMax, exDef.group, BAR, PLATE);
+
+    if (failsAtMax > 0 || avgRepsAtMax === 0) {
+      return {
+        weight: anchored, repTarget: exDef.repRange[0],
+        note: 'advanced-lifted-heavier-misses',
+        failStreak: 0, nearMissStreak: 0
+      };
+    }
+    if (avgRepsAtMax >= exDef.repRange[1] && effort !== 'hard') {
+      return {
+        weight: roundWeight(summary.actualMax + groupInc, exDef.group, BAR, PLATE),
+        repTarget: exDef.repRange[0],
+        note: 'advanced-out-performed-ceiling',
+        failStreak: 0, nearMissStreak: 0
+      };
+    }
+    if (avgRepsAtMax >= exDef.repRange[1]) {
+      return {
+        weight: anchored, repTarget: exDef.repRange[1],
+        note: 'advanced-out-performed-hard-ceiling',
+        failStreak: 0, nearMissStreak: 0
+      };
+    }
+    if (avgRepsAtMax >= exDef.repRange[0]) {
+      const inc = effort === 'easy' ? 2 : (effort === 'hard' ? 0 : 1);
+      return {
+        weight: anchored,
+        repTarget: Math.min(exDef.repRange[1], Math.round(avgRepsAtMax) + inc),
+        note: 'advanced-out-performed-mid',
+        failStreak: 0, nearMissStreak: 0
+      };
+    }
+    // Below bottom of range — floor at bottom.
     return {
-      weight: roundWeight(summary.actualMax, exDef.group, BAR, PLATE),
-      repTarget: exDef.repRange[0],
-      note: 'advanced-lifted-heavier',
+      weight: anchored, repTarget: exDef.repRange[0],
+      note: 'advanced-lifted-heavier-low',
       failStreak: 0, nearMissStreak: 0
     };
   }
@@ -1062,44 +1129,119 @@ const pumpStrengthDef = { group: 'back', sets: 4, repRange: [10, 15], startWeigh
   expect('Partial (no fail): note',        r.note,   'held-incomplete');
 }
 
-// ── Auto-anchor up (broadened) ──────────────────────────────────
+// ── Auto-anchor up (v3.11 — honor reps achieved) ────────────────
 
-// Lifted heavier than prescribed (allDone): anchor to actual, reset reps
+// Lifted heavier mid-range (allDone, OK): anchor + repTarget = avgRepsAtMax + 1
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 8 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
-      actualMax: 100, avgReps: 8, effortPattern: 'ok' }
+      actualMax: 100, avgRepsAtMax: 8, effortPattern: 'ok' }
   );
-  expect('Lifted heavier (allDone): weight anchors',     r.weight,    100);
-  expect('Lifted heavier (allDone): reps → bottom',     r.repTarget, 6);
-  expect('Lifted heavier (allDone): note',              r.note,      'advanced-lifted-heavier');
+  expect('Lifted heavier mid-range (OK): weight anchors',  r.weight,    100);
+  expect('Lifted heavier mid-range (OK): repTarget = +1',  r.repTarget, 9);
+  expect('Lifted heavier mid-range (OK): note',            r.note,      'advanced-out-performed-mid');
 }
 
-// Lifted heavier, also failed last set: still anchor (failed-set weight counts)
+// Lifted heavier mid-range, easy effort: +2 reps from avgRepsAtMax
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 8 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 100, avgRepsAtMax: 7, effortPattern: 'easy' }
+  );
+  expect('Lifted heavier mid-range (easy): repTarget = +2', r.repTarget, 9);
+  expect('Lifted heavier mid-range (easy): weight anchors', r.weight,    100);
+}
+
+// Lifted heavier mid-range, hard effort: +0 reps from avgRepsAtMax (clamp at >= range[0])
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 8 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 100, avgRepsAtMax: 8, effortPattern: 'hard' }
+  );
+  expect('Lifted heavier mid-range (hard): repTarget = avg', r.repTarget, 8);
+  expect('Lifted heavier mid-range (hard): weight anchors',  r.weight,    100);
+}
+
+// THE BUG BILL CAUGHT: lifted heavier AND hit rep ceiling cleanly →
+// must promote one MORE increment, not just anchor + reset to range[0].
+// Pre-v3.11 this returned 100 × 6; v3.11 returns 105 × 6.
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 6 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 100, avgRepsAtMax: 10, effortPattern: 'ok' }
+  );
+  expect('Lifted heavier + ceiling (OK): promoted weight',  r.weight,    105);
+  expect('Lifted heavier + ceiling (OK): reps → bottom',    r.repTarget, 6);
+  expect('Lifted heavier + ceiling (OK): note',             r.note,      'advanced-out-performed-ceiling');
+  expect('Lifted heavier + ceiling (OK): fail-streak reset', r.failStreak,     0);
+  expect('Lifted heavier + ceiling (OK): near-miss reset',   r.nearMissStreak, 0);
+}
+
+// Lifted heavier + ceiling, easy effort: still promotes (effort != hard)
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 6 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 100, avgRepsAtMax: 10, effortPattern: 'easy' }
+  );
+  expect('Lifted heavier + ceiling (easy): promoted weight', r.weight,    105);
+  expect('Lifted heavier + ceiling (easy): reps → bottom',   r.repTarget, 6);
+}
+
+// Lifted heavier + hit ceiling but HARD effort: anchor at top of range, no promote
+{
+  const r = simulateAssistanceProgression(
+    { weight: 90, repTarget: 6 }, rowDef,
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 100, avgRepsAtMax: 10, effortPattern: 'hard' }
+  );
+  expect('Lifted heavier + ceiling (hard): weight anchors',  r.weight,    100);
+  expect('Lifted heavier + ceiling (hard): reps → top',      r.repTarget, 10);
+  expect('Lifted heavier + ceiling (hard): note',            r.note,      'advanced-out-performed-hard-ceiling');
+}
+
+// Lifted heavier with a fail at the new weight: anchor + bottom of range
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 10 }, rowDef,
     { anyFail: true, anyDone: true, anySkipped: false, allDone: false,
-      actualMax: 100,
+      actualMax: 100, failsAtMax: 1, avgRepsAtMax: 8,
       failedSetIndices: [3], failedRepDeficits: [1] }
   );
-  expect('Lifted heavier (1 fail): weight anchors',  r.weight,         100);
-  expect('Lifted heavier (1 fail): reps → bottom', r.repTarget,      6);
-  expect('Lifted heavier (1 fail): note',          r.note,           'advanced-lifted-heavier');
-  expect('Lifted heavier (1 fail): fail-streak reset', r.failStreak,     0);
-  expect('Lifted heavier (1 fail): near-miss reset',   r.nearMissStreak, 0);
+  expect('Lifted heavier (fail at max): weight anchors', r.weight,         100);
+  expect('Lifted heavier (fail at max): reps → bottom',  r.repTarget,      6);
+  expect('Lifted heavier (fail at max): note',           r.note,           'advanced-lifted-heavier-misses');
+  expect('Lifted heavier (fail at max): fail-streak reset', r.failStreak,     0);
+  expect('Lifted heavier (fail at max): near-miss reset',   r.nearMissStreak, 0);
 }
 
-// Lifted heavier, partial session (some skipped): still anchor
+// Lifted heavier, partial session (some skipped, no done at max): anchor + bottom
 {
   const r = simulateAssistanceProgression(
     { weight: 90, repTarget: 10 }, rowDef,
     { anyFail: false, anyDone: true, anySkipped: true, allDone: false,
       actualMax: 105 }
   );
-  expect('Lifted heavier (partial): weight anchors', r.weight,     105);
-  expect('Lifted heavier (partial): reps → bottom', r.repTarget,  6);
+  expect('Lifted heavier (partial): weight anchors', r.weight,    105);
+  expect('Lifted heavier (partial): reps → bottom',  r.repTarget, 6);
+}
+
+// Sanity check: previously-broken Bill scenario.
+// Pre-deload week 4 prescribed at 235 × something, did 240 × 10 across all 4 sets, OK.
+// Pre-v3.11 produced 240 × 6. v3.11 must produce 245 × 6.
+{
+  const r = simulateAssistanceProgression(
+    { weight: 235, repTarget: 6 }, rowDef,  // CSR, range [6,10], +5 group inc
+    { anyFail: false, anyDone: true, anySkipped: false, allDone: true,
+      actualMax: 240, avgRepsAtMax: 10, effortPattern: 'ok' }
+  );
+  expect("Bill's CSR scenario: weight promoted",      r.weight,    245);
+  expect("Bill's CSR scenario: reps to bottom",       r.repTarget, 6);
+  expect("Bill's CSR scenario: note (ceiling)",       r.note,      'advanced-out-performed-ceiling');
 }
 
 // ── Near-miss bucket detection ──────────────────────────────────
