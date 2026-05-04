@@ -751,7 +751,7 @@
 <div class="header">
   <div style="display:flex; align-items:flex-end; gap:7px; line-height:1">
     <div class="logo">IRON <span>300</span></div>
-    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.10
+    <span style="font-family:system-ui,-apple-system,sans-serif; font-size:11px; color:var(--blue-grey); letter-spacing:0.3px; font-weight:400; padding-bottom:5px">v3.11
   </div>
   <div class="header-stats">
     <div class="hstat">
@@ -954,8 +954,135 @@ function loadData() {
         d.dayQueue.push(((d.currentDay - 1 + i) % totalDays) + 1);
       }
     }
+    // ── v3.11 migration: heal swallowed-promotion auto-anchor data ──
+    // Pre-v3.11 the auto-anchor branch hard-reset repTarget to range[0],
+    // discarding rep performance at the heavier weight. For each accessory
+    // whose most recent non-deload log was an old-format auto-anchor AND
+    // stored state still matches that auto-anchor's output (no progression
+    // since), recompute the new outcome and update stored. Idempotent.
+    if (!d.migrations) d.migrations = {};
+    if (!d.migrations.v3_11_autoanchor) {
+      try { applyV311AutoAnchorMigration(d); } catch(e) { console.warn('v3.11 migration failed', e); }
+      d.migrations.v3_11_autoanchor = true;
+      saveData(d);
+    }
     return d;
   } catch(e) { return defaultData(); }
+}
+
+// v3.11 — pure decision tree for the auto-anchor outcome.
+// Inputs: an array of logged sets ({weight, reps, done, fail, skipped, effort}),
+// the exercise definition, and plate-rounding settings.
+// Returns: { weight, repTarget, note } — the new stored target.
+// Caller is responsible for verifying that this is an auto-anchor case
+// (i.e., the heaviest logged weight is greater than the previously stored).
+function decideAutoAnchorOutcome(sets, exDef, barWeight, smallestPlate) {
+  const liveWeights = sets
+    .filter(s => (s.done || s.fail) && !s.skipped)
+    .map(s => s.weight);
+  if (!liveWeights.length) return null;
+  const actualMax = Math.max.apply(null, liveWeights);
+
+  const setsAtMax     = sets.filter(s => s.weight === actualMax && !s.skipped);
+  const failsAtMax    = setsAtMax.filter(s => s.fail);
+  const doneRepsAtMax = setsAtMax.filter(s => s.done).map(s => s.reps);
+  const avgRepsAtMax  = doneRepsAtMax.length
+    ? doneRepsAtMax.reduce((a, b) => a + b, 0) / doneRepsAtMax.length
+    : 0;
+  const effortPattern = analyzeEffort(sets);
+  const groupInc = exDef.failProtocol === 'pump'
+    ? 2.5
+    : ((exDef.group === 'back' || exDef.group === 'chest' || exDef.group === 'triceps') ? 5 : 2.5);
+
+  const anchoredWeight = roundWeight(actualMax, exDef.group, barWeight, smallestPlate);
+
+  if (failsAtMax.length > 0 || doneRepsAtMax.length === 0) {
+    return {
+      weight: anchoredWeight,
+      repTarget: exDef.repRange[0],
+      note: `Advanced — lifted heavier than prescribed (anchored at ${anchoredWeight} × ${exDef.repRange[0]})`,
+    };
+  }
+  if (avgRepsAtMax >= exDef.repRange[1] && effortPattern !== 'hard') {
+    const promoted = roundWeight(actualMax + groupInc, exDef.group, barWeight, smallestPlate);
+    return {
+      weight: promoted,
+      repTarget: exDef.repRange[0],
+      note: `Advanced — out-performed AND hit rep ceiling, promoted to ${promoted} × ${exDef.repRange[0]}`,
+    };
+  }
+  if (avgRepsAtMax >= exDef.repRange[1]) {
+    return {
+      weight: anchoredWeight,
+      repTarget: exDef.repRange[1],
+      note: `Advanced — out-performed at ceiling (hard effort), holding at ${anchoredWeight} × ${exDef.repRange[1]}`,
+    };
+  }
+  if (avgRepsAtMax >= exDef.repRange[0]) {
+    const inc = effortPattern === 'easy' ? 2 : (effortPattern === 'hard' ? 0 : 1);
+    const newRepTarget = Math.min(exDef.repRange[1], Math.round(avgRepsAtMax) + inc);
+    return {
+      weight: anchoredWeight,
+      repTarget: newRepTarget,
+      note: `Advanced — out-performed, anchored at ${anchoredWeight} × ${newRepTarget}`,
+    };
+  }
+  return {
+    weight: anchoredWeight,
+    repTarget: exDef.repRange[0],
+    note: `Advanced — lifted heavier than prescribed (anchored at ${anchoredWeight} × ${exDef.repRange[0]})`,
+  };
+}
+
+// v3.11 migration body. Walks workoutLogs to find the most recent non-deload
+// log per exercise; if that log used the OLD auto-anchor note exactly AND
+// stored state still matches the OLD auto-anchor output (so progression
+// hasn't moved past it), recompute and update.
+function applyV311AutoAnchorMigration(d) {
+  if (!d.workoutLogs || d.workoutLogs.length === 0) return;
+  if (!d.assistanceWeights) return;
+  if (typeof ASSISTANCE_LIBRARY === 'undefined') return;
+
+  // Walk logs newest → oldest, collect first non-deload occurrence per exercise.
+  const lastNonDeloadByEx = {};
+  for (let i = d.workoutLogs.length - 1; i >= 0; i--) {
+    const log = d.workoutLogs[i];
+    if (!log.exercises) continue;
+    for (const ex of log.exercises) {
+      if (lastNonDeloadByEx[ex.name]) continue;
+      const note = ex.sets?.[0]?.progressionNote || '';
+      if (note.startsWith('Deload — ')) continue;
+      lastNonDeloadByEx[ex.name] = ex;
+    }
+  }
+
+  const barWeight     = d.settings?.barWeight     || 45;
+  const smallestPlate = d.settings?.smallestPlate || 2.5;
+
+  for (const exName of Object.keys(lastNonDeloadByEx)) {
+    const ex    = lastNonDeloadByEx[exName];
+    const exDef = ASSISTANCE_LIBRARY[exName];
+    if (!exDef) continue;
+    const note = ex.sets?.[0]?.progressionNote || '';
+    if (note !== 'Advanced — lifted heavier than prescribed') continue;
+    const stored = d.assistanceWeights[exName];
+    if (!stored) continue;
+
+    // Verify stored state still matches the OLD auto-anchor output.
+    const liveWeights = ex.sets
+      .filter(s => (s.done || s.fail) && !s.skipped)
+      .map(s => s.weight);
+    if (!liveWeights.length) continue;
+    const actualMax = Math.max.apply(null, liveWeights);
+    const oldAnchoredWeight = roundWeight(actualMax, exDef.group, barWeight, smallestPlate);
+    if (stored.weight !== oldAnchoredWeight) continue;
+    if (stored.repTarget !== exDef.repRange[0]) continue;
+
+    const recovered = decideAutoAnchorOutcome(ex.sets, exDef, barWeight, smallestPlate);
+    if (!recovered) continue;
+    if (recovered.weight === stored.weight && recovered.repTarget === stored.repTarget) continue;
+    d.assistanceWeights[exName] = { weight: recovered.weight, repTarget: recovered.repTarget };
+  }
 }
 
 function saveData(d) {
@@ -2771,22 +2898,66 @@ function logWorkout() {
       return; // continue forEach
     }
 
-    // ── Auto-anchor up (v3.9 broadened) ──
+    // ── Auto-anchor up (v3.11 — honor reps achieved) ──
     // If the user lifted heavier than the prescribed weight on ANY logged set
     // (Done or Failed — a failed set still proves the load was handled until
-    // rep failure), anchor stored weight to that and reset reps to bottom.
+    // rep failure), anchor stored weight to actualMax, then run the same
+    // rep-ladder logic the standard all-done path uses — but against the reps
+    // actually achieved at the heavier weight.
+    //
+    // Pre-v3.11 this branch hard-reset repTarget to range[0] and `return`ed
+    // before the rep-ceiling logic could run. That silently swallowed a
+    // legitimate promotion: 240 × 10 across all sets at a 235-prescribed
+    // exercise stored as 240 × 6 instead of 245 × 6 (the rep-ceiling bump
+    // the user earned). Bill caught this 2026-05-03 first session post-deload.
+    //
     // Resets both streaks: leveling up the weight invalidates "stuck" patterns.
     const allLoggedWeights = actualWeights.concat(failedWeights);
     const actualMax = allLoggedWeights.length ? Math.max.apply(null, allLoggedWeights) : 0;
     if (actualMax > aw.weight && (anyDone || anyFail)) {
-      progressionNote = 'Advanced — lifted heavier than prescribed';
-      d.assistanceWeights[exName] = {
-        weight: roundWeight(actualMax, exDef.group, barWeight, smallestPlate),
-        repTarget: exDef.repRange[0],
-      };
       d.failStreak[exName] = 0;
       d.nearMissStreak[exName] = 0;
-      exercises[exercises.length - 1].sets.forEach(s => s.progressionNote = progressionNote);
+
+      const setsAtMax     = sets.filter(s => s.weight === actualMax && !s.skipped);
+      const failsAtMax    = setsAtMax.filter(s => s.fail);
+      const doneRepsAtMax = setsAtMax.filter(s => s.done).map(s => s.reps);
+      const avgRepsAtMax  = doneRepsAtMax.length
+        ? doneRepsAtMax.reduce((a, b) => a + b, 0) / doneRepsAtMax.length
+        : 0;
+      const effortPattern = analyzeEffort(sets);
+
+      const anchoredWeight = roundWeight(actualMax, exDef.group, barWeight, smallestPlate);
+      let newWeight    = anchoredWeight;
+      let newRepTarget = exDef.repRange[0];
+      let note;
+
+      if (failsAtMax.length > 0 || doneRepsAtMax.length === 0) {
+        // Misses at the new weight, or no clean Done sets to read from.
+        // Anchor at bottom of range — pre-v3.11 default for this sub-case.
+        newRepTarget = exDef.repRange[0];
+        note = `Advanced — lifted heavier than prescribed (anchored at ${newWeight} × ${newRepTarget})`;
+      } else if (avgRepsAtMax >= exDef.repRange[1] && effortPattern !== 'hard') {
+        // Hit rep ceiling cleanly at the heavier weight — promote one more increment.
+        newWeight    = roundWeight(actualMax + groupInc, exDef.group, barWeight, smallestPlate);
+        newRepTarget = exDef.repRange[0];
+        note = `Advanced — out-performed AND hit rep ceiling, promoted to ${newWeight} × ${newRepTarget}`;
+      } else if (avgRepsAtMax >= exDef.repRange[1]) {
+        // Hit ceiling but effort was hard — anchor at top of range, hold off on the bump.
+        newRepTarget = exDef.repRange[1];
+        note = `Advanced — out-performed at ceiling (hard effort), holding at ${newWeight} × ${newRepTarget}`;
+      } else if (avgRepsAtMax >= exDef.repRange[0]) {
+        // Mid-range. Effort-aware rep step (mirrors standard all-done path): easy +2, ok +1, hard +0.
+        const inc = effortPattern === 'easy' ? 2 : (effortPattern === 'hard' ? 0 : 1);
+        newRepTarget = Math.min(exDef.repRange[1], Math.round(avgRepsAtMax) + inc);
+        note = `Advanced — out-performed, anchored at ${newWeight} × ${newRepTarget}`;
+      } else {
+        // Below bottom of rep range. Floor at bottom.
+        newRepTarget = exDef.repRange[0];
+        note = `Advanced — lifted heavier than prescribed (anchored at ${newWeight} × ${newRepTarget})`;
+      }
+
+      d.assistanceWeights[exName] = { weight: newWeight, repTarget: newRepTarget };
+      exercises[exercises.length - 1].sets.forEach(s => s.progressionNote = note);
       return;
     }
 
